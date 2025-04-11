@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model BarberAppointment {
+  id        String   @id @default(cuid())
+  fullname  String
+  date      DateTime
+  phone     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AssistantAppointment {
+  id        String   @id @default(cuid())
+  fullname  String
+  date      DateTime
+  phone     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Appointment {
+  id        String   @id @default(cuid())
+  fullname  String
+  date      DateTime
+  phone     String
+  userId    Int      // Berber veya çalışan ID'si
+  user      AllowedUser @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AllowedUser {
+  id          Int       @id @default(autoincrement())
+  email       String    @unique
+  name        String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  appointments Appointment[]
+  closedSlots ClosedSlot[]
+}
+
+model ClosedSlot {
+  id        String   @id @default(cuid())
+  userId    Int
+  date      DateTime
+  reason    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      AllowedUser @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([date])
+}
