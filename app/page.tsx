@@ -1,9 +1,38 @@
+"use client";
+
+import { useSession, signOut } from "next-auth/react";
+import Link from "next/link";
 import Image from "next/image";
 
 export default function Home() {
+  const { data: session } = useSession();
+
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
+        {session ? (
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">
+              Hoş geldin, {session.user?.name}!
+            </h1>
+            <button
+              onClick={() => signOut()}
+              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Çıkış Yap
+            </button>
+          </div>
+        ) : (
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Giriş Yapılmadı</h1>
+            <Link
+              href="/auth/signin"
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Giriş Yap
+            </Link>
+          </div>
+        )}
         <Image
           className="dark:invert"
           src="/next.svg"
