@@ -12,13 +12,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { maskName } from "@/components/calendar/shared/utils/date-utils";
+import { maskName } from "../utils/date-utils";
 
 interface AppointmentCardProps {
   appointment: Appointment;
 }
 
-export default function AppointmentCard({ appointment }: AppointmentCardProps) {
+export function AppointmentCard({ appointment }: AppointmentCardProps) {
   const { data: session } = useSession();
   const isLoggedIn = !!session;
 

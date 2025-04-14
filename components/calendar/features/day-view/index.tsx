@@ -4,14 +4,14 @@ import { getDay, format } from "date-fns"
 import { Card } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth-context"
 import { Appointment, AllowedUser } from "@/types"
-import { useMobile } from "@/lib/use-mobile"
+import { useMobile } from "@/components/calendar/shared/hooks/useMobile"
 import { generateTimeSlots, maskName as maskNameUtil } from "./utils/day-view-utils"
 import { useDayView } from "./hooks/useDayView"
 import { DayViewHeader } from "./components/day-view-header"
 import { DayViewTitle } from "./components/day-view-title"
 import { UserColumn } from "./components/user-column"
 import { DayViewDialogs } from "./components/day-view-dialogs"
-import { AppointmentForm } from "./appointment-form"
+import { AppointmentForm } from "../appointment-form"
 
 interface DayViewProps {
   date: Date
