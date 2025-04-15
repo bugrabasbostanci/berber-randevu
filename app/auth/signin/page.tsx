@@ -1,16 +1,23 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function SignIn() {
+  const router = useRouter();
+  
+  const handleGoBack = () => {
+    router.back();
+  };
+  
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold mb-6">Hoş Geldiniz</h1>
-        <p className="text-gray-600 mb-8">Hızlıca giriş yapın ve başlayın</p>
+      <div className="text-center w-full max-w-md">
+        <h1 className="text-3xl font-bold mb-2">The Barber Shop Randevu Yönetim Sistemi</h1>
+        <p className="text-gray-600 mb-8">Sadece yetkililer giriş yapabilir</p>
         <button
           onClick={() => signIn("google", { callbackUrl: "/" })}
-          className="flex items-center justify-center gap-2 bg-white text-gray-700 border border-gray-300 rounded-lg px-6 py-3 hover:bg-gray-50 transition-colors"
+          className="flex items-center justify-center gap-2 bg-white text-gray-700 border border-gray-300 rounded-lg px-6 py-3 hover:bg-gray-50 transition-colors mx-auto mb-4 w-full"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
@@ -19,6 +26,19 @@ export default function SignIn() {
             />
           </svg>
           Google ile Giriş Yap
+        </button>
+        
+        <button 
+          onClick={handleGoBack}
+          onKeyDown={(e) => e.key === "Enter" && handleGoBack()}
+          className="flex items-center justify-center gap-2 bg-white text-gray-700 border border-gray-300 rounded-lg px-6 py-3 hover:bg-gray-50 transition-colors mx-auto w-full"
+          aria-label="Geri dön"
+          tabIndex={0}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          Geri Dön
         </button>
       </div>
     </div>

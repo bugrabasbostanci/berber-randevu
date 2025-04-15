@@ -10,8 +10,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-100">
       <Header />
-      <main className="container mx-auto p-4">
-        <div className="max-w-7xl mx-auto">
+      <main>
+        <div className="px-4 sm:px-6 max-w-7xl mx-auto py-4">
           <CalendarView />
         </div>
       </main>

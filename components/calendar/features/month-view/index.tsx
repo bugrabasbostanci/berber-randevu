@@ -8,6 +8,7 @@ import { CalendarLegend } from "./components/calendar-legend"
 import { MonthGrid } from "./components/month-grid"
 import { useCalendar } from "./hooks/useCalendar"
 import { DayView } from "../day-view"
+import { useCalendarContext } from "@/components/calendar/shared/context/calendar-context"
 import {
   getDaysToDisplay,
   getEmptyDaysAtStart,
@@ -22,9 +23,9 @@ import {
 
 export function MonthView() {
   const { isAuthenticated } = useAuth()
+  const { viewMode, refreshCalendar } = useCalendarContext()
   
   const {
-    viewMode,
     currentMonth,
     selectedDate,
     appointments,
@@ -34,9 +35,9 @@ export function MonthView() {
     maxDate,
     goToPreviousMonth,
     goToNextMonth,
-    refreshCalendar,
     handleDayClick,
-    backToMonthView
+    backToMonthView,
+    goToDate
   } = useCalendar(isAuthenticated())
 
   // İsim gizleme fonksiyonu - wrapper
@@ -130,4 +131,4 @@ export function MonthView() {
       />
     </div>
   )
-} 
+}

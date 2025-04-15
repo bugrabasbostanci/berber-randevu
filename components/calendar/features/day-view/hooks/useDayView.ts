@@ -18,6 +18,10 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
   const [dayToClose, setDayToClose] = useState<{ userId: number; date: Date } | null>(null)
   const [isAppointmentFormOpen, setIsAppointmentFormOpen] = useState(false)
   const [selectedSlotTime, setSelectedSlotTime] = useState<Date | null>(null)
+  const [closeSlotDialogOpen, setCloseSlotDialogOpen] = useState(false)
+  const [slotToClose, setSlotToClose] = useState<{ userId: number; time: Date } | null>(null)
+  const [closeSlotReason, setCloseSlotReason] = useState('')
+  const [closeDayReason, setCloseDayReason] = useState('')
 
   // Kapatılan zaman dilimlerini getir
   useEffect(() => {
@@ -81,6 +85,14 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
   }
 
   const handleCloseTimeSlot = async (userId: number, time: Date) => {
+    setSlotToClose({ userId, time })
+    setCloseSlotReason('')
+    setCloseSlotDialogOpen(true)
+  }
+
+  const confirmCloseTimeSlot = async () => {
+    if (!slotToClose) return
+    
     try {
       const response = await fetch('/api/appointments/close-slot', {
         method: 'POST',
@@ -88,9 +100,9 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId,
-          date: time,
-          reason: 'Berber/Çalışan tarafından kapatıldı'
+          userId: slotToClose.userId,
+          date: slotToClose.time,
+          reason: closeSlotReason || 'Berber/Çalışan tarafından kapatıldı'
         })
       })
 
@@ -103,11 +115,16 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
     } catch (error) {
       console.error('Zaman dilimi kapatılırken hata oluştu:', error)
       toast.error(error instanceof Error ? error.message : 'Zaman dilimi kapatılamadı')
+    } finally {
+      setCloseSlotDialogOpen(false)
+      setSlotToClose(null)
+      setCloseSlotReason('')
     }
   }
 
   const handleCloseDay = async (userId: number) => {
     setDayToClose({ userId, date })
+    setCloseDayReason('')
     setCloseDayDialogOpen(true)
   }
 
@@ -123,7 +140,7 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
         body: JSON.stringify({
           userId: dayToClose.userId,
           date: dayToClose.date,
-          reason: 'Berber/Çalışan tarafından tüm gün kapatıldı'
+          reason: closeDayReason || 'Berber/Çalışan tarafından tüm gün kapatıldı'
         })
       })
 
@@ -140,6 +157,7 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
     } finally {
       setCloseDayDialogOpen(false)
       setDayToClose(null)
+      setCloseDayReason('')
     }
   }
 
@@ -168,6 +186,32 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
     }
   }
 
+  const handleOpenDay = async (userId: number) => {
+    try {
+      const response = await fetch('/api/appointments/open-day', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          date
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Gün açılamadı')
+      }
+
+      const data = await response.json()
+      toast.success(data.message)
+      onRefresh()
+    } catch (error) {
+      console.error('Gün açılırken hata oluştu:', error)
+      toast.error(error instanceof Error ? error.message : 'Gün açılamadı')
+    }
+  }
+
   const handleCloseAppointmentForm = () => {
     setIsAppointmentFormOpen(false)
     setSelectedUserId(null)
@@ -186,6 +230,12 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
     selectedUserId,
     closeDayDialogOpen,
     setCloseDayDialogOpen,
+    closeDayReason,
+    setCloseDayReason,
+    closeSlotDialogOpen,
+    setCloseSlotDialogOpen,
+    closeSlotReason,
+    setCloseSlotReason,
     isAppointmentFormOpen,
     selectedSlotTime,
     handleEdit,
@@ -193,9 +243,11 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
     confirmDelete,
     handleCreate,
     handleCloseTimeSlot,
+    confirmCloseTimeSlot,
     handleCloseDay,
     confirmCloseDay,
     handleOpenSlot,
+    handleOpenDay,
     handleCloseAppointmentForm
   }
 } 

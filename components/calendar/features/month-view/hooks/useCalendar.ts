@@ -9,26 +9,29 @@ import {
   addDays,
   isBefore,
   isAfter,
+  parseISO
 } from "date-fns"
 import { toast } from "sonner"
 import { getCurrentDate, getAllowedUsers, getAppointmentsForDateRange } from "@/lib/data"
 import { Appointment, AllowedUser } from "@/types"
 import { isDayClosed } from "@/components/calendar/shared/utils/date-utils"
-
-type ViewMode = "month" | "day"
+import { useCalendarContext } from "@/components/calendar/shared/context/calendar-context"
 
 export const useCalendar = (isAuthenticated: boolean) => {
-  const [viewMode, setViewMode] = useState<ViewMode>("month")
+  const {
+    viewMode,
+    setViewMode,
+    selectedDate,
+    setSelectedDate,
+    today,
+    maxDate,
+    refreshTrigger
+  } = useCalendarContext()
+
   const [currentMonth, setCurrentMonth] = useState<Date>(getCurrentDate())
-  const [selectedDate, setSelectedDate] = useState<Date>(getCurrentDate())
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [users, setUsers] = useState<AllowedUser[]>([])
   const [loading, setLoading] = useState(true)
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
-
-  // Bugünden itibaren 7 günlük aralık
-  const today = startOfDay(getCurrentDate())
-  const maxDate = endOfDay(addDays(today, 6)) // Bugün + 6 gün = 7 günlük aralık
 
   // Kullanıcıları getir
   useEffect(() => {
@@ -71,7 +74,7 @@ export const useCalendar = (isAuthenticated: boolean) => {
         setSelectedDate(today)
       }
     }
-  }, [viewMode, selectedDate, today, maxDate])
+  }, [viewMode, selectedDate, today, maxDate, setSelectedDate])
 
   // Önceki aya git
   const goToPreviousMonth = (): void => {
@@ -85,7 +88,7 @@ export const useCalendar = (isAuthenticated: boolean) => {
 
   // Takvimi yenile
   const refreshCalendar = () => {
-    setRefreshTrigger(prev => prev + 1)
+    // Context içindeki refresh fonksiyonu kullanılacak
   }
 
   // Bir güne tıklandığında
@@ -108,6 +111,21 @@ export const useCalendar = (isAuthenticated: boolean) => {
     setViewMode("month")
   }
 
+  // Belirli bir tarihe git (day-view'dan gelen istekler için)
+  const goToDate = (dateStr: string): void => {
+    try {
+      const date = parseISO(dateStr)
+      if (!isDayClosed(date)) {
+        setSelectedDate(date)
+        setViewMode("day")
+      } else {
+        toast.error("Pazar günleri hizmet verilmemektedir")
+      }
+    } catch (error) {
+      console.error("Tarih ayrıştırılırken hata oluştu:", error)
+    }
+  }
+
   return {
     viewMode,
     currentMonth,
@@ -121,6 +139,7 @@ export const useCalendar = (isAuthenticated: boolean) => {
     goToNextMonth,
     refreshCalendar,
     handleDayClick,
-    backToMonthView
+    backToMonthView,
+    goToDate
   }
 } 

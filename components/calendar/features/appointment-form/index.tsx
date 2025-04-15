@@ -75,7 +75,11 @@ export function AppointmentForm({
     } else if (isCreating) {
       setFormData(prev => ({
         ...prev,
-        time: selectedTime || format(new Date(selectedDate), "HH:mm")
+        fullname: "",
+        phone: "",
+        date: typeof selectedDate === 'string' ? selectedDate : format(selectedDate, "yyyy-MM-dd"),
+        time: selectedTime || format(new Date(selectedDate), "HH:mm"),
+        userId: userId
       }))
     }
   }, [appointment, isCreating, selectedDate, userId, selectedTime])
@@ -201,7 +205,7 @@ export function AppointmentForm({
                 }
                 setFormData(prev => ({ ...prev, time: value }))
               }}
-              disabled={!!appointment} // Eğer randevu düzenleniyorsa saat seçimi devre dışı
+              disabled={!!appointment || isCreating} // Eğer randevu düzenleniyorsa veya yeni randevu oluşturuluyorsa saat seçimi devre dışı
             >
               <SelectTrigger>
                 <SelectValue placeholder="Saat seçin" />
@@ -218,6 +222,11 @@ export function AppointmentForm({
                 ))}
               </SelectContent>
             </Select>
+            {isCreating && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Seçtiğiniz saat: {formData.time}. Saati değiştirmek için geri dönüp farklı bir saat dilimi seçebilirsiniz.
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">Telefon</Label>

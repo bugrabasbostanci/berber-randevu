@@ -76,15 +76,15 @@ export const getDayStatusClass = (day: Date, appointments: Appointment[]): strin
   const status = getDayStatus(day, appointments)
   switch (status) {
     case "empty":
-      return "bg-white"
+      return "bg-white border-gray-200"
     case "low":
-      return "bg-green-50"
+      return "bg-green-50 border-green-200 text-green-700"
     case "medium":
-      return "bg-yellow-50"
+      return "bg-yellow-50 border-yellow-200 text-yellow-700"
     case "full":
-      return "bg-red-50"
+      return "bg-red-50 border-red-200 text-red-700"
     case "closed":
-      return "bg-gray-100"
+      return "bg-gray-50 border-gray-200 text-gray-400"
   }
 }
 
@@ -95,11 +95,11 @@ export const getDayIndicatorClass = (day: Date, appointments: Appointment[]): st
     case "empty":
       return "hidden"
     case "low":
-      return "bg-green-400"
+      return "bg-green-500"
     case "medium":
-      return "bg-yellow-400"
+      return "bg-yellow-500"
     case "full":
-      return "bg-red-400"
+      return "bg-red-500"
     case "closed":
       return "bg-gray-400"
   }

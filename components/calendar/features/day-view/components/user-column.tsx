@@ -16,6 +16,7 @@ interface UserColumnProps {
   closedSlots: ClosedSlot[]
   isAuthenticated: boolean
   isSunday: boolean
+  isMobile: boolean
   isBreakpoint: { sm: boolean }
   maskName: (fullname: string) => string
   onEdit: (appointment: Appointment) => void
@@ -34,6 +35,7 @@ export const UserColumn = ({
   closedSlots,
   isAuthenticated,
   isSunday,
+  isMobile,
   isBreakpoint,
   maskName,
   onEdit,
@@ -44,21 +46,21 @@ export const UserColumn = ({
   onCloseDay
 }: UserColumnProps) => {
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between sticky top-0 bg-background p-2 border-b">
-        <h3 className="text-base sm:text-lg font-semibold">
+    <div className="space-y-1 sm:space-y-3">
+      <div className="flex items-center justify-between sticky top-0 bg-background p-1 sm:p-2 border-b z-10">
+        <h3 className="text-[11px] sm:text-lg font-semibold truncate">
           {user.name}
         </h3>
-        {isAuthenticated && !isSunday && (
-          <div className="flex gap-2">
+        {isAuthenticated && !isSunday && !isMobile && (
+          <div className="flex gap-1 sm:gap-2">
             <Button 
               onClick={() => onCloseDay(user.id)} 
-              size={isBreakpoint.sm ? "sm" : "default"}
+              size="sm"
               variant="destructive"
-              className="whitespace-nowrap"
+              className="whitespace-nowrap h-8 text-xs sm:text-sm"
             >
-              <CalendarX className="h-4 w-4 sm:mr-2" />
-              <span className={cn("transition-opacity", isBreakpoint.sm ? "opacity-0 hidden" : "opacity-100")}>
+              <CalendarX className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+              <span className={cn("transition-opacity", isMobile ? "opacity-0 hidden" : "opacity-100")}>
                 Günü Kapat
               </span>
             </Button>
@@ -66,7 +68,7 @@ export const UserColumn = ({
         )}
       </div>
       
-      <div className="space-y-2 sm:space-y-3">
+      <div className="space-y-1 sm:space-y-3">
         {timeSlots.map(slot => {
           const appointment = findAppointmentForSlot(
             user.id, 
@@ -89,6 +91,7 @@ export const UserColumn = ({
               isSlotClosed={slotClosed}
               closedSlots={closedSlots}
               isAuthenticated={isAuthenticated}
+              isMobile={isMobile}
               maskName={maskName}
               onEdit={onEdit}
               onDelete={onDelete}

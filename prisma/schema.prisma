@@ -14,24 +14,6 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model BarberAppointment {
-  id        String   @id @default(cuid())
-  fullname  String
-  date      DateTime
-  phone     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model AssistantAppointment {
-  id        String   @id @default(cuid())
-  fullname  String
-  date      DateTime
-  phone     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
 model Appointment {
   id        String   @id @default(cuid())
   fullname  String
