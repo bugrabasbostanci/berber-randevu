@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { startOfDay, endOfDay, addHours } from "date-fns"
+import { startOfDay, endOfDay } from "date-fns"
 
 export async function POST(request: Request) {
   try {

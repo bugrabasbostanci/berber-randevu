@@ -1,38 +1,58 @@
-# Berber Randevu Sistemi 🪒
+# Berber Randevu Sistemi
 
-Bu proje, Google OAuth entegrasyonu ile güvenli bir şekilde giriş yapılabilen ve berberler için randevu yönetim sistemi sunan bir web uygulamasıdır.
+Modern ve kullanıcı dostu bir berber randevu yönetim sistemi. Bu uygulama, berberlerin randevu yönetimini kolaylaştırmak, müşteri deneyimini iyileştirmek ve işletme verimliliğini artırmak amacıyla geliştirilmiştir.
 
-## 🚀 Özellikler
+![Berber Randevu Sistemi](/public/images/screenshot.png)
 
-- **Güvenli Kimlik Doğrulama**
-  - Google OAuth 2.0 entegrasyonu
-  - NextAuth.js ile oturum yönetimi
-  - Supabase veritabanı entegrasyonu
+## 🎯 Proje Amacı
 
-- **Randevu Yönetimi**
-  - Aylık ve günlük takvim görünümü
-  - Randevu oluşturma, düzenleme ve iptal etme
-  - Çakışan randevuları önleme sistemi
-  - Kapalı gün ve saat yönetimi
+Bu proje, berber salonlarının ve müşterilerinin randevu süreçlerini dijitalleştirmek için geliştirilmiştir:
 
-- **Kullanıcı Dostu Arayüz**
-  - Responsive tasarım (mobil uyumlu)
-  - Modern ve şık kullanıcı arayüzü
-  - Kolay kullanılabilir takvim sistemi
+- 🔄 Kolay randevu oluşturma ve yönetimi
+- 🕒 Zaman kaybını önleme
+- 👤 İzin verilen hesaplar için özel erişim
+- 📆 Randevu takvimini etkili yönetme
+- 🚫 Kapalı zaman dilimlerini işaretleme
+
+## ✨ Özellikler
+
+- 🔐 Google hesabı ile güvenli kimlik doğrulama
+- 📱 Responsive tasarım ile her cihazdan erişim
+- 📅 Interaktif takvim arayüzü
+- 📞 Müşteri iletişim ve geri bildirim sistemi
+- ⏰ Randevu oluşturma ve düzenleme
+- 🔒 Yalnızca izin verilen kullanıcılar için erişim
+- 📊 Randevu istatistikleri görüntüleme
 
 ## 🛠️ Teknoloji Stack
 
-- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
-- **Backend**: Next.js API Routes, Prisma ORM
-- **Veritabanı**: Supabase (PostgreSQL)
-- **Kimlik Doğrulama**: NextAuth.js, Google OAuth
-- **Stil**: Tailwind CSS, Shadcn UI
+- **Frontend**: Next.js 15, React 18, TypeScript
+- **Styling**: Tailwind CSS 4, Shadcn UI (Radix UI)
+- **Backend**: Next.js API Routes, Next Auth 5
+- **Veritabanı**: PostgreSQL (Supabase)
+- **ORM**: Prisma 6
+- **Kimlik Doğrulama**: Google OAuth
 
-## 🚀 Başlangıç
+## 💾 Veritabanı Modelleri
+
+- **Appointment**: Randevu bilgilerini tutar
+- **AllowedUser**: Sisteme giriş yapabilen kullanıcıları yönetir
+- **ClosedSlot**: Randevu alınamayacak zaman dilimlerini tutar
+- **Contact**: Müşteri geri bildirimlerini saklar
+
+## 🚀 Kurulum ve Çalıştırma
+
+### Ön Koşullar
+
+- Node.js 18+ ve npm
+- PostgreSQL veritabanı (veya Supabase hesabı)
+- Google Cloud hesabı (OAuth için)
+
+### Adımlar
 
 1. Projeyi klonlayın:
 ```bash
-git clone [repo-url]
+git clone https://github.com/kullaniciadi/berber-randevu-sistemi.git
 cd berber-randevu-sistemi
 ```
 
@@ -41,18 +61,18 @@ cd berber-randevu-sistemi
 npm install
 ```
 
-3. Gerekli ortam değişkenlerini ayarlayın:
-```env
-DATABASE_URL="your-supabase-url"
-GOOGLE_CLIENT_ID="your-google-client-id"
-GOOGLE_CLIENT_SECRET="your-google-client-secret"
-NEXTAUTH_SECRET="your-nextauth-secret"
-NEXTAUTH_URL="http://localhost:3000"
+3. `.env` dosyasını oluşturun ve aşağıdaki değişkenleri ayarlayın:
+```
+DATABASE_URL=postgresql://kullaniciadi:sifre@localhost:5432/berber_randevu
+DIRECT_URL=postgresql://kullaniciadi:sifre@localhost:5432/berber_randevu
+AUTH_SECRET=your-secure-secret-key
+AUTH_GOOGLE_ID=your-google-client-id
+AUTH_GOOGLE_SECRET=your-google-client-secret
 ```
 
 4. Veritabanı şemasını senkronize edin:
 ```bash
-npx prisma db push
+npm run db:push
 ```
 
 5. Geliştirme sunucusunu başlatın:
@@ -60,29 +80,48 @@ npx prisma db push
 npm run dev
 ```
 
-Uygulama http://localhost:3000 adresinde çalışmaya başlayacaktır.
+6. Tarayıcınızda `http://localhost:3000` adresine giderek uygulamayı görüntüleyin.
 
-## 📱 Kullanım
+## 📱 Kullanım Kılavuzu
 
-1. Google hesabınızla giriş yapın
-2. Takvimden uygun bir gün seçin
-3. Boş zaman dilimlerinden birini seçerek randevu oluşturun
-4. Randevularınızı takvim üzerinden yönetin
+### Berber/Çalışan Kullanımı
+1. Google hesabınız ile giriş yapın (hesabınızın AllowedUser tablosunda kayıtlı olması gerekir)
+2. Ana sayfadaki takvim görünümünden tarih seçin
+3. Boş zaman dilimlerine randevu ekleyin veya mevcut randevuları düzenleyin
+4. İzin/tatil günlerinizi "Kapalı Zaman Dilimleri" seçeneği ile işaretleyin
+
+### Müşteri Randevusu (Berber tarafından)
+1. Berber, boş bir zaman dilimi seçer
+2. Müşteri bilgilerini (ad-soyad, telefon) doldurur
+3. Randevu oluştur butonuna tıklar
+
+## 🔧 Geliştirme
+
+### Kodlama Standartları
+- TypeScript tip kontrolü
+- ESLint ile kod kalitesi kontrolü
+- Düzenli kod formatı için Prettier
+- Component bazlı yapı
+
+### Klasör Yapısı
+- `/app`: Next.js sayfa route yapısı
+- `/components`: UI bileşenleri
+- `/prisma`: Veritabanı şeması ve migrations
+- `/lib`: Yardımcı fonksiyonlar
+- `/types`: TypeScript tip tanımlamaları
 
 ## 🤝 Katkıda Bulunma
 
 1. Bu repository'yi fork edin
-2. Yeni bir branch oluşturun (`git checkout -b feature/amazing-feature`)
-3. Değişikliklerinizi commit edin (`git commit -m 'feat: add amazing feature'`)
-4. Branch'inizi push edin (`git push origin feature/amazing-feature`)
-5. Bir Pull Request oluşturun
+2. Feature branch oluşturun (`git checkout -b feature/yeni-özellik`)
+3. Değişikliklerinizi commit edin (`git commit -m 'Yeni özellik: Açıklama'`)
+4. Branch'inizi push edin (`git push origin feature/yeni-özellik`)
+5. Pull Request oluşturun
 
 ## 📝 Lisans
 
-Bu proje MIT lisansı altında lisanslanmıştır. Daha fazla bilgi için `LICENSE` dosyasına bakın.
+Bu proje [MIT Lisansı](LICENSE) altında lisanslanmıştır.
 
-## 👥 İletişim
+---
 
-Proje Sahibi - [@your-github-username](https://github.com/your-github-username)
-
-Proje Linki: [https://github.com/your-username/berber-randevu-sistemi](https://github.com/your-username/berber-randevu-sistemi)
+⭐ Berber Randevu Sistemi - Berber işletmenizin dijital dönüşümü için modern çözüm

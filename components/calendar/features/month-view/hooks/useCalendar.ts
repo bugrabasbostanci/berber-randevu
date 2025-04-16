@@ -4,9 +4,6 @@ import {
   subMonths,
   startOfMonth,
   endOfMonth,
-  startOfDay,
-  endOfDay,
-  addDays,
   isBefore,
   isAfter,
   parseISO
@@ -32,6 +29,7 @@ export const useCalendar = (isAuthenticated: boolean) => {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [users, setUsers] = useState<AllowedUser[]>([])
   const [loading, setLoading] = useState(true)
+  const [dayViewLoading, setDayViewLoading] = useState(false)
 
   // Kullanıcıları getir
   useEffect(() => {
@@ -103,7 +101,12 @@ export const useCalendar = (isAuthenticated: boolean) => {
     }
 
     setSelectedDate(day)
+    setDayViewLoading(true)
     setViewMode("day")
+    
+    setTimeout(() => {
+      setDayViewLoading(false)
+    }, 500)
   }
 
   // Gün görünümünden aylık görünüme dön
@@ -117,7 +120,12 @@ export const useCalendar = (isAuthenticated: boolean) => {
       const date = parseISO(dateStr)
       if (!isDayClosed(date)) {
         setSelectedDate(date)
+        setDayViewLoading(true)
         setViewMode("day")
+        
+        setTimeout(() => {
+          setDayViewLoading(false)
+        }, 500)
       } else {
         toast.error("Pazar günleri hizmet verilmemektedir")
       }
@@ -140,6 +148,7 @@ export const useCalendar = (isAuthenticated: boolean) => {
     refreshCalendar,
     handleDayClick,
     backToMonthView,
-    goToDate
+    goToDate,
+    dayViewLoading
   }
 } 

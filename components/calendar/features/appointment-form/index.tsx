@@ -9,7 +9,7 @@ import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
-import { generateTimeSlots, createAppointmentData } from "./utils/appointment-form-utils"
+import { generateTimeSlots } from "./utils/appointment-form-utils"
 import { useAppointments } from "../../shared/hooks/useAppointments"
 
 interface AppointmentFormProps {
@@ -44,23 +44,23 @@ export function AppointmentForm({
   const [timeSlots, setTimeSlots] = useState<string[]>([])
   const [bookedSlots, setBookedSlots] = useState<string[]>([])
 
-  // Form verilerini sıfırla
-  const resetForm = () => {
-    setFormData({
-      fullname: "",
-      date: typeof selectedDate === 'string' ? selectedDate : format(selectedDate, "yyyy-MM-dd"),
-      time: selectedTime || format(new Date(selectedDate), "HH:mm"),
-      phone: "",
-      userId: userId
-    })
-  }
-
   // Modal kapandığında formu sıfırla
   useEffect(() => {
+    // Form verilerini sıfırla fonksiyonu useEffect içinde tanımla
+    const resetForm = () => {
+      setFormData({
+        fullname: "",
+        date: typeof selectedDate === 'string' ? selectedDate : format(selectedDate, "yyyy-MM-dd"),
+        time: selectedTime || format(new Date(selectedDate), "HH:mm"),
+        phone: "",
+        userId: userId
+      })
+    }
+
     if (!isOpen) {
       resetForm()
     }
-  }, [isOpen])
+  }, [isOpen, selectedDate, selectedTime, userId])
 
   // Form verilerini appointment veya isCreating değiştiğinde güncelle
   useEffect(() => {
@@ -86,7 +86,7 @@ export function AppointmentForm({
 
   useEffect(() => {
     // Seçilen tarih için saat dilimlerini oluştur
-    const slots = generateTimeSlots(selectedDate as Date)
+    const slots = generateTimeSlots()
     setTimeSlots(slots)
 
     // Seçilen tarihteki mevcut randevuları getir
@@ -180,6 +180,7 @@ export function AppointmentForm({
               value={formData.fullname}
               onChange={handleChange}
               required
+              placeholder="Örn: Ahmet Yılmaz"
             />
           </div>
           <div className="space-y-2">
@@ -236,6 +237,7 @@ export function AppointmentForm({
               value={formData.phone}
               onChange={handleChange}
               required
+              placeholder="0555 444 33 22"
             />
           </div>
           <Button type="submit" disabled={isLoading}>

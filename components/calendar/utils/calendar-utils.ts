@@ -9,7 +9,7 @@ import {
 } from "date-fns"
 import { MAX_APPOINTMENTS_PER_DAY, isDayFullyClosed } from "@/lib/data"
 import { Appointment } from "@/types"
-import { DayStatus } from "../components/calendar-day"
+import { DayStatus } from "../features/month-view/components/calendar-day"
 
 // Tüm takvim günlerini getir
 export const getDaysToDisplay = (currentMonth: Date): Date[] => {
@@ -88,6 +88,8 @@ export const getDayStatusClass = (day: Date, appointments: Appointment[]): strin
       return "bg-red-50"
     case "closed":
       return "bg-gray-100"
+    default:
+      return "bg-white" // Varsayılan durum için dönüş değeri
   }
 }
 
@@ -105,6 +107,8 @@ export const getDayIndicatorClass = (day: Date, appointments: Appointment[]): st
       return "bg-red-400"
     case "closed":
       return "bg-gray-400"
+    default:
+      return "hidden" // Varsayılan durum için dönüş değeri
   }
 }
 

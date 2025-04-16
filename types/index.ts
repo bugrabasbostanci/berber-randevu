@@ -19,9 +19,6 @@ export interface AllowedUser {
   closedSlots: ClosedSlot[]
 }
 
-export interface BarberAppointment extends BaseAppointment {}
-export interface AssistantAppointment extends BaseAppointment {}
-
 export interface ClosedSlot {
   id: string
   userId: number

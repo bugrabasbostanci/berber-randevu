@@ -99,7 +99,6 @@ export default function FeedbackForm({ onClose }: FeedbackFormProps) {
           aria-label="Geri bildirim içeriği"
           required
         />
-        <p className="text-xs text-muted-foreground">Ctrl + Enter ile gönderebilirsiniz</p>
       </div>
       
       <div className="flex justify-end gap-2">

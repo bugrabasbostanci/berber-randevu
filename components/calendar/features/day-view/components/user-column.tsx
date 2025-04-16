@@ -29,14 +29,12 @@ interface UserColumnProps {
 
 export const UserColumn = ({
   user,
-  date,
   timeSlots,
   appointments,
   closedSlots,
   isAuthenticated,
   isSunday,
   isMobile,
-  isBreakpoint,
   maskName,
   onEdit,
   onDelete,

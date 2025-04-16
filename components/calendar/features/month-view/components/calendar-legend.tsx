@@ -1,20 +1,6 @@
-import { formatShortDate } from "@/components/calendar/shared/utils/date-utils"
-import { useMobile } from "@/components/calendar/shared/hooks/useMobile"
 import { MAX_APPOINTMENTS_PER_DAY } from "@/lib/data"
 
-interface CalendarLegendProps {
-  isAuthenticated: boolean
-  today: Date
-  maxDate: Date
-}
-
-export const CalendarLegend = ({
-  isAuthenticated,
-  today,
-  maxDate,
-}: CalendarLegendProps) => {
-  const { isMobile } = useMobile()
-  
+export const CalendarLegend = () => {
   return (
     <div className="mt-4 bg-white rounded-lg border border-gray-200 p-3">
       <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">

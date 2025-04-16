@@ -24,7 +24,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           })
 
           if (!allowedUser) {
-            console.log('Kullanıcı izni yok:', user.email)
             return false
           }
 

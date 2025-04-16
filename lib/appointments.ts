@@ -40,27 +40,27 @@ export async function getAppointmentsForDateRange(startDate: Date, endDate: Date
 export async function createAppointment(data: {
   fullname: string
   date: Date
-  telefon: string
-  mail: string
+  phone: string
+  userId: number
 }) {
   return await prisma.appointment.create({
     data: {
       fullname: data.fullname,
       date: data.date,
-      telefon: data.telefon,
-      mail: data.mail,
+      phone: data.phone,
+      userId: data.userId,
     },
   })
 }
 
 // Randevu güncelle
 export async function updateAppointment(
-  id: number,
+  id: string,
   data: {
     fullname?: string
     date?: Date
-    telefon?: string
-    mail?: string
+    phone?: string
+    userId?: number
   }
 ) {
   return await prisma.appointment.update({
@@ -70,7 +70,7 @@ export async function updateAppointment(
 }
 
 // Randevu sil
-export async function deleteAppointment(id: number) {
+export async function deleteAppointment(id: string) {
   return await prisma.appointment.delete({
     where: { id },
   })

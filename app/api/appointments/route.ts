@@ -1,16 +1,21 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { Appointment } from '@/types'
-import { format } from 'date-fns'
 
 // Veri doğrulama fonksiyonu
-const validateAppointmentData = (data: any) => {
+interface AppointmentData {
+  fullname?: string;
+  date?: string | Date;
+  phone?: string;
+  userId?: number | string;
+}
+
+const validateAppointmentData = (data: AppointmentData) => {
   const errors = []
   
   if (!data.fullname) errors.push('Ad Soyad gerekli')
   if (!data.date) errors.push('Tarih gerekli')
   if (!data.phone) errors.push('Telefon gerekli')
-  if (!data.barberId) errors.push('Berber seçimi gerekli')
+  if (!data.userId) errors.push('Kullanıcı seçimi gerekli')
 
   return errors
 }
@@ -18,14 +23,12 @@ const validateAppointmentData = (data: any) => {
 // Tüm randevuları getir
 export async function GET() {
   try {
-    console.log('Randevular getiriliyor...')
-    
     const appointments = await prisma.appointment.findMany({
       orderBy: {
         date: 'asc'
       },
       include: {
-        barber: true
+        user: true
       }
     })
 
@@ -34,8 +37,8 @@ export async function GET() {
       fullname: appointment.fullname,
       date: appointment.date,
       phone: appointment.phone,
-      barberId: appointment.barberId,
-      barberName: appointment.barber.name
+      userId: appointment.userId,
+      userName: appointment.user.name
     }))
 
     return NextResponse.json(formattedAppointments)
@@ -91,7 +94,6 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
-    console.log('Güncelleme verisi:', body)
 
     if (!body.id) {
       return NextResponse.json(
@@ -109,14 +111,14 @@ export async function PUT(request: Request) {
       )
     }
 
-    // Berber kontrolü
-    const barber = await prisma.barber.findUnique({
-      where: { id: Number(body.barberId) }
+    // Kullanıcı kontrolü
+    const user = await prisma.allowedUser.findUnique({
+      where: { id: Number(body.userId) }
     })
 
-    if (!barber) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Geçersiz berber seçimi' },
+        { error: 'Geçersiz kullanıcı seçimi' },
         { status: 400 }
       )
     }
@@ -129,10 +131,10 @@ export async function PUT(request: Request) {
         fullname: body.fullname,
         date: new Date(body.date),
         phone: body.phone,
-        barberId: Number(body.barberId)
+        userId: Number(body.userId)
       },
       include: {
-        barber: true
+        user: true
       }
     })
 
@@ -161,7 +163,7 @@ export async function DELETE(request: Request) {
 
     await prisma.appointment.delete({
       where: {
-        id: parseInt(id)
+        id: id // id zaten bir string olduğu için parseInt yapmaya gerek yok
       }
     })
 

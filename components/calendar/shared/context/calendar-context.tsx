@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, ReactNode, useState, useEffect } from "react"
+import { createContext, useContext, ReactNode, useState, } from "react"
 import { getCurrentDate } from "@/lib/data"
 import { addDays, startOfDay, endOfDay } from "date-fns"
 

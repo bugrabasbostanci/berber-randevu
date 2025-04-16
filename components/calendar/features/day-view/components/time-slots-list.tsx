@@ -11,6 +11,7 @@ interface TimeSlotsListProps {
   appointments: Appointment[]
   closedSlots: ClosedSlot[]
   isAuthenticated: boolean
+  isMobile: boolean
   onEdit: (appointment: Appointment) => void
   onDelete: (appointmentId: string) => void
   onCreate: (userId: number, time: Date) => void
@@ -24,6 +25,7 @@ export const TimeSlotsList = ({
   appointments,
   closedSlots,
   isAuthenticated,
+  isMobile,
   onEdit,
   onDelete,
   onCreate,
@@ -45,6 +47,7 @@ export const TimeSlotsList = ({
             isSlotClosed={slotClosed}
             closedSlots={closedSlots}
             isAuthenticated={isAuthenticated}
+            isMobile={isMobile}
             maskName={(fullname: string) => maskName(fullname, isAuthenticated)}
             onEdit={onEdit}
             onDelete={onDelete}

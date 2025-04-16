@@ -1,9 +1,8 @@
 import { startOfDay, endOfDay, startOfMonth, endOfMonth } from "date-fns"
 import { Appointment, AllowedUser } from "@/types"
-import { addHours, format, isSunday } from "date-fns"
 
 // Günlük maksimum randevu sayısı
-export const MAX_APPOINTMENTS_PER_DAY = 20
+export const MAX_APPOINTMENTS_PER_DAY = 36
 
 // Özel kapalı günler (örneğin bayramlar)
 const FULLY_CLOSED_DATES: string[] = [
@@ -17,7 +16,7 @@ const FULLY_CLOSED_DATES: string[] = [
 ]
 
 // Özel kapalı günler (tarih formatı: YYYY-MM-DD)
-const SPECIAL_CLOSED_DAYS = [
+export const SPECIAL_CLOSED_DAYS = [
   "2025-01-01", // Yılbaşı
   "2025-04-23", // Ulusal Egemenlik ve Çocuk Bayramı
   "2025-05-01", // Emek ve Dayanışma Günü
@@ -35,7 +34,7 @@ export function getCurrentDate(): Date {
 // Belirli bir günün tamamen kapalı olup olmadığını kontrol et
 export function isDayFullyClosed(date: Date): boolean {
   const dateString = date.toISOString().split("T")[0]
-  return FULLY_CLOSED_DATES.includes(dateString)
+  return FULLY_CLOSED_DATES.includes(dateString) || SPECIAL_CLOSED_DAYS.includes(dateString)
 }
 
 // Belirli bir gün için randevuları getir

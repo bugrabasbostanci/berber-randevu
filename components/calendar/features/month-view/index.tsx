@@ -1,7 +1,6 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
-import { Appointment } from "@/types"
 import { CalendarHeader } from "./components/calendar-header"
 import { CalendarInfoNotice } from "./components/calendar-info-notice"
 import { CalendarLegend } from "./components/calendar-legend"
@@ -9,6 +8,7 @@ import { MonthGrid } from "./components/month-grid"
 import { useCalendar } from "./hooks/useCalendar"
 import { DayView } from "../day-view"
 import { useCalendarContext } from "@/components/calendar/shared/context/calendar-context"
+import { SkeletonLoader } from "../../shared/skeleton-loader"
 import {
   getDaysToDisplay,
   getEmptyDaysAtStart,
@@ -37,7 +37,7 @@ export function MonthView() {
     goToNextMonth,
     handleDayClick,
     backToMonthView,
-    goToDate
+    dayViewLoading
   } = useCalendar(isAuthenticated())
 
   // İsim gizleme fonksiyonu - wrapper
@@ -73,7 +73,19 @@ export function MonthView() {
   }
 
   if (loading) {
-    return <div className="flex justify-center py-8">Yükleniyor...</div>
+    return (
+      <div className="space-y-4">
+        <CalendarHeader
+          currentMonth={currentMonth}
+          onPreviousMonth={goToPreviousMonth}
+          onNextMonth={goToNextMonth}
+          isLoading={true}
+        />
+        <div className="my-6">
+          <SkeletonLoader type="calendar" />
+        </div>
+      </div>
+    )
   }
 
   if (viewMode === "day") {
@@ -84,6 +96,7 @@ export function MonthView() {
         users={users}
         onBack={backToMonthView}
         onRefresh={refreshCalendar}
+        isLoading={dayViewLoading}
       />
     )
   }
@@ -124,11 +137,7 @@ export function MonthView() {
         maskName={maskName}
       />
 
-      <CalendarLegend
-        isAuthenticated={isAuthenticated()}
-        today={today}
-        maxDate={maxDate}
-      />
+      <CalendarLegend />
     </div>
   )
 }

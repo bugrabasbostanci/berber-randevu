@@ -3,10 +3,10 @@ import { prisma } from "@/lib/prisma"
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
 
     const appointment = await prisma.appointment.delete({
       where: { id }
@@ -24,10 +24,10 @@ export async function DELETE(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
     const data = await request.json()
 
     const appointment = await prisma.appointment.update({

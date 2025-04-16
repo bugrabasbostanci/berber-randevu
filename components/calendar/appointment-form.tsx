@@ -1,17 +1,16 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Appointment } from "@/types"
 import { format } from "date-fns"
-import { tr } from "date-fns/locale"
-import { ChevronLeft } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
+import { Loader } from "@/components/ui/loader"
+import { useCalendarContext } from "./shared/context/calendar-context"
 
 interface AppointmentFormProps {
   isOpen: boolean
@@ -32,7 +31,7 @@ const WORKING_HOURS = {
 }
 
 // Saat dilimlerini oluştur
-const generateTimeSlots = (date: Date) => {
+const generateTimeSlots = () => {
   const slots = []
   let currentTime = WORKING_HOURS.start
 
@@ -57,6 +56,7 @@ export function AppointmentForm({
   isCreating,
   selectedTime
 }: AppointmentFormProps) {
+  const { refreshCalendar } = useCalendarContext()
   const [formData, setFormData] = useState({
     fullname: "",
     date: typeof selectedDate === 'string' ? selectedDate : format(selectedDate, "yyyy-MM-dd"),
@@ -65,27 +65,24 @@ export function AppointmentForm({
     userId: userId
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false)
   const [timeSlots, setTimeSlots] = useState<string[]>([])
   const [bookedSlots, setBookedSlots] = useState<string[]>([])
-
-  // Form verilerini sıfırla
-  const resetForm = () => {
-    setFormData({
-      fullname: "",
-      date: typeof selectedDate === 'string' ? selectedDate : format(selectedDate, "yyyy-MM-dd"),
-      time: selectedTime || format(new Date(selectedDate), "HH:mm"),
-      phone: "",
-      userId: userId
-    })
-    setIsSubmitting(false)
-  }
 
   // Modal kapandığında formu sıfırla
   useEffect(() => {
     if (!isOpen) {
-      resetForm()
+      // Form verilerini sıfırla
+      setFormData({
+        fullname: "",
+        date: typeof selectedDate === 'string' ? selectedDate : format(selectedDate, "yyyy-MM-dd"),
+        time: selectedTime || format(new Date(selectedDate), "HH:mm"),
+        phone: "",
+        userId: userId
+      })
+      setIsSubmitting(false)
     }
-  }, [isOpen])
+  }, [isOpen, selectedDate, selectedTime, userId])
 
   // Form verilerini appointment veya isCreating değiştiğinde güncelle
   useEffect(() => {
@@ -107,11 +104,12 @@ export function AppointmentForm({
 
   useEffect(() => {
     // Seçilen tarih için saat dilimlerini oluştur
-    const slots = generateTimeSlots(selectedDate as Date)
+    const slots = generateTimeSlots()
     setTimeSlots(slots)
 
     // Seçilen tarihteki mevcut randevuları getir
     const fetchBookedSlots = async () => {
+      setIsLoadingSlots(true)
       try {
         const response = await fetch(`/api/appointments/date/${format(selectedDate as Date, "yyyy-MM-dd")}`)
         if (response.ok) {
@@ -123,6 +121,8 @@ export function AppointmentForm({
         }
       } catch (error) {
         console.error("Randevular getirilirken hata oluştu:", error)
+      } finally {
+        setIsLoadingSlots(false)
       }
     }
 
@@ -150,53 +150,106 @@ export function AppointmentForm({
         return
       }
 
-      // Kapatılmış saat dilimi kontrolü
-      const isSlotClosed = await fetch(`/api/appointments/check-closed-slot?date=${formData.date}T${formData.time}&userId=${userId}`)
-        .then(res => res.json())
-        .then(data => data.isClosed)
-        .catch(() => false)
+      // Optimistic UI güncelleme
+      if (appointment) {
+        // Mevcut randevunun güncellenmesi durumunda optimistic UI güncelleme
+        toast.promise(
+          async () => {
+            // Kapatılmış saat dilimi kontrolü
+            const checkSlotUrl = `/api/appointments/check-closed-slot?date=${formData.date}T${formData.time}&userId=${userId}`
+            const isSlotClosed = await fetch(checkSlotUrl)
+              .then(res => res.json())
+              .then(data => data.isClosed)
+              .catch(() => false)
 
-      if (!appointment && isSlotClosed) {
-        toast.error("Bu saat dilimi kapatılmış. Lütfen başka bir saat seçin.")
-        setIsSubmitting(false)
-        return
+            if (!appointment && isSlotClosed) {
+              throw new Error("Bu saat dilimi kapatılmış. Lütfen başka bir saat seçin.")
+            }
+
+            const endpoint = `/api/appointments/${appointment.id}`
+            const response = await fetch(endpoint, {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                ...formData,
+                date: `${formData.date}T${formData.time}`,
+                userId: userId
+              }),
+            })
+
+            if (!response.ok) {
+              const errorData = await response.json()
+              if (response.status === 400) {
+                throw new Error("Bu saat diliminde zaten bir randevu bulunmaktadır.")
+              }
+              throw new Error(errorData.error || "Randevu kaydedilemedi")
+            }
+
+            const updatedAppointment = await response.json()
+            // İşlem başarılı
+            refreshCalendar() // Takvimi yenile
+            onSuccess() // Callback'i çağır
+            onClose() // Modalı kapat
+            return updatedAppointment
+          },
+          {
+            loading: 'Randevu güncelleniyor...',
+            success: () => 'Randevu başarıyla güncellendi',
+            error: (err) => err.message || 'Randevu güncellenirken bir hata oluştu'
+          }
+        )
+      } else {
+        // Yeni randevu oluşturma durumunda optimistic UI güncelleme
+        toast.promise(
+          async () => {
+            // Kapatılmış saat dilimi kontrolü
+            const checkSlotUrl = `/api/appointments/check-closed-slot?date=${formData.date}T${formData.time}&userId=${userId}`
+            const isSlotClosed = await fetch(checkSlotUrl)
+              .then(res => res.json())
+              .then(data => data.isClosed)
+              .catch(() => false)
+
+            if (isSlotClosed) {
+              throw new Error("Bu saat dilimi kapatılmış. Lütfen başka bir saat seçin.")
+            }
+
+            const endpoint = "/api/appointments"
+            const response = await fetch(endpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                ...formData,
+                date: `${formData.date}T${formData.time}`,
+                userId: userId
+              }),
+            })
+
+            if (!response.ok) {
+              const errorData = await response.json()
+              if (response.status === 400) {
+                throw new Error("Bu saat diliminde zaten bir randevu bulunmaktadır.")
+              }
+              throw new Error(errorData.error || "Randevu oluşturulamadı")
+            }
+
+            const newAppointment = await response.json()
+            // İşlem başarılı
+            refreshCalendar() // Takvimi yenile
+            onSuccess() // Callback'i çağır
+            onClose() // Modalı kapat
+            return newAppointment
+          },
+          {
+            loading: 'Randevu oluşturuluyor...',
+            success: () => 'Randevu başarıyla oluşturuldu',
+            error: (err) => err.message || 'Randevu oluşturulurken bir hata oluştu'
+          }
+        )
       }
-
-      const method = appointment ? "PUT" : "POST"
-      const endpoint = appointment 
-        ? `/api/appointments/${appointment.id}`
-        : "/api/appointments"
-
-      const response = await fetch(endpoint, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...formData,
-          date: `${formData.date}T${formData.time}`,
-          userId: userId
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        if (response.status === 400) {
-          toast.error("Bu saat diliminde zaten bir randevu bulunmaktadır. Lütfen başka bir saat seçin.")
-        } else {
-          throw new Error(errorData.error || "Randevu kaydedilemedi")
-        }
-        setIsSubmitting(false)
-        return
-      }
-
-      toast.success(
-        appointment 
-          ? "Randevu başarıyla güncellendi"
-          : "Randevu başarıyla oluşturuldu"
-      )
-      onSuccess()
-      onClose()
     } catch (error) {
       console.error("Randevu kaydedilirken hata oluştu:", error)
       toast.error(error instanceof Error ? error.message : "Randevu kaydedilemedi")
@@ -222,6 +275,8 @@ export function AppointmentForm({
               value={formData.fullname}
               onChange={handleChange}
               required
+              disabled={isSubmitting}
+              placeholder="Örn: Ahmet Yılmaz"
             />
           </div>
           <div className="space-y-2">
@@ -233,37 +288,44 @@ export function AppointmentForm({
               value={formData.date}
               onChange={handleChange}
               required
+              disabled={isSubmitting}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="time">Saat</Label>
-            <Select
-              value={formData.time}
-              onValueChange={(value) => {
-                // Seçilen saat dolu mu kontrol et
-                if (!appointment && bookedSlots.includes(value)) {
-                  toast.error("Bu saat dilimi dolu. Lütfen başka bir saat seçin.")
-                  return
-                }
-                setFormData(prev => ({ ...prev, time: value }))
-              }}
-              disabled={!!appointment} // Eğer randevu düzenleniyorsa saat seçimi devre dışı
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Saat seçin" />
-              </SelectTrigger>
-              <SelectContent>
-                {timeSlots.map((time) => (
-                  <SelectItem
-                    key={time}
-                    value={time}
-                    disabled={!appointment && bookedSlots.includes(time)}
-                  >
-                    {time} {!appointment && bookedSlots.includes(time) ? "(Dolu)" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isLoadingSlots ? (
+              <div className="h-9 flex items-center justify-center">
+                <Loader size="sm" text="Uygun saatler yükleniyor..." />
+              </div>
+            ) : (
+              <Select
+                value={formData.time}
+                onValueChange={(value) => {
+                  // Seçilen saat dolu mu kontrol et
+                  if (!appointment && bookedSlots.includes(value)) {
+                    toast.error("Bu saat dilimi dolu. Lütfen başka bir saat seçin.")
+                    return
+                  }
+                  setFormData(prev => ({ ...prev, time: value }))
+                }}
+                disabled={!!appointment || isSubmitting} // Eğer randevu düzenleniyorsa veya form gönderiliyorsa saat seçimi devre dışı
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Saat seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeSlots.map((time) => (
+                    <SelectItem
+                      key={time}
+                      value={time}
+                      disabled={!appointment && bookedSlots.includes(time)}
+                    >
+                      {time} {!appointment && bookedSlots.includes(time) ? "(Dolu)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">Telefon</Label>
@@ -273,10 +335,19 @@ export function AppointmentForm({
               value={formData.phone}
               onChange={handleChange}
               required
+              disabled={isSubmitting}
+              placeholder="0555 444 33 22"
             />
           </div>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Kaydediliyor..." : appointment ? "Güncelle" : "Kaydet"}
+          <Button type="submit" disabled={isSubmitting || isLoadingSlots} className="w-full">
+            {isSubmitting ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader size="sm" />
+                <span>{appointment ? "Güncelleniyor..." : "Oluşturuluyor..."}</span>
+              </div>
+            ) : (
+              appointment ? "Güncelle" : "Kaydet"
+            )}
           </Button>
         </form>
       </DialogContent>

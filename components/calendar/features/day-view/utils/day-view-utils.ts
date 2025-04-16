@@ -1,5 +1,3 @@
-import { format } from "date-fns"
-import { tr } from "date-fns/locale"
 import { Appointment, ClosedSlot } from "@/types"
 import { formatTime } from "@/components/calendar/shared/utils/date-utils"
 

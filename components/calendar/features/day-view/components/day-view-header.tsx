@@ -8,7 +8,7 @@ interface DayViewHeaderProps {
   isBreakpoint: { sm: boolean }
 }
 
-export const DayViewHeader = ({ date, onBack, isBreakpoint }: DayViewHeaderProps) => {
+export const DayViewHeader = ({ onBack, isBreakpoint }: DayViewHeaderProps) => {
   return (
     <div className="flex items-center justify-between">
       <Button 

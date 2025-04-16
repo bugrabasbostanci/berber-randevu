@@ -1,4 +1,4 @@
-import { isSameDay, isSameMonth } from "date-fns"
+import { isSameDay } from "date-fns"
 import { Card, CardContent } from "@/components/ui/card"
 import { Appointment } from "@/types"
 import { DayStatus } from "./calendar-day"
@@ -16,6 +16,8 @@ interface CalendarDay {
 }
 
 interface MonthGridProps {
+  daysToDisplay: Date[]
+  emptyDaysAtStart: number
   currentMonth: Date
   selectedDate: Date
   appointments: Appointment[]
@@ -24,6 +26,8 @@ interface MonthGridProps {
   maxDate: Date
   onDayClick: (day: Date) => void
   getDayStatus: (day: Date) => DayStatus
+  getDayStatusClass: (day: Date) => string
+  getDayIndicatorClass: (day: Date) => string
   isDayActive: (day: Date) => boolean
   isDayVisible: (day: Date) => boolean
   getAppointmentsForDay: (day: Date) => Appointment[]
@@ -33,10 +37,8 @@ interface MonthGridProps {
 export const MonthGrid = ({
   currentMonth,
   selectedDate,
-  appointments,
   isAuthenticated,
   today,
-  maxDate,
   onDayClick,
   getDayStatus,
   isDayActive,
@@ -86,7 +88,7 @@ export const MonthGrid = ({
       
       // Status rengi ve doluluk göstergesi
       let statusColor = "";
-      let statusText = getStatusText(status);
+      const statusText = getStatusText(status);
       let statusIcon = null;
       
       switch (status) {
@@ -246,7 +248,6 @@ export const MonthGrid = ({
       const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
       const isToday = isSameDay(date, today)
       const dayAppointments = getAppointmentsForDay(date)
-      const dayStatus = getDayStatus(date)
       const isActive = isDayActive(date) && isWithinActiveWindow(date)
       const isVisible = isDayVisible(date)
 
@@ -260,8 +261,7 @@ export const MonthGrid = ({
       })
     }
 
-    // Sonraki aydan günler (5 satırlık grid için)
-    const totalDaysNeeded = 35 // 5 satır x 7 gün
+    
     // Eğer takvim 6 satır gerektiriyorsa, son satırı dahil et
     const numberOfRows = Math.ceil((firstDayIndex + lastDayOfMonth.getDate()) / 7)
     const adjustedTotalDays = numberOfRows <= 5 ? 35 : 42

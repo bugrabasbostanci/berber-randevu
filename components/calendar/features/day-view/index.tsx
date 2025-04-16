@@ -1,20 +1,19 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { getDay, format } from "date-fns"
+import { useState } from "react"
+import { format } from "date-fns"
 import { tr } from "date-fns/locale"
-import { Card, CardContent } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth-context"
 import { Appointment, AllowedUser } from "@/types"
-import { generateTimeSlots, maskName as maskNameUtil, isSlotClosed } from "./utils/day-view-utils"
+import { generateTimeSlots, maskName as maskNameUtil } from "./utils/day-view-utils"
 import { useDayView } from "./hooks/useDayView"
 import { DayViewDialogs } from "./components/day-view-dialogs"
 import { AppointmentForm } from "../appointment-form"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, User, Phone, Clock, Info, Calendar, Pencil, Trash2, Lock, Plus, X } from "lucide-react"
+import { ChevronLeft, User, Phone, Clock, Calendar, Pencil, Trash2, Lock, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { SkeletonLoader } from "../../shared/skeleton-loader"
 
 interface DayViewProps {
   date: Date
@@ -22,11 +21,18 @@ interface DayViewProps {
   users: AllowedUser[]
   onBack: () => void
   onRefresh: () => void
+  isLoading?: boolean
 }
 
-export function DayView({ date, appointments, users, onBack, onRefresh }: DayViewProps) {
+export function DayView({ 
+  date, 
+  appointments, 
+  users, 
+  onBack, 
+  onRefresh,
+  isLoading = false
+}: DayViewProps) {
   const { isAuthenticated } = useAuth()
-  const isSunday = getDay(date) === 0
   const timeSlots = generateTimeSlots(date)
   const [selectedSlotInfo, setSelectedSlotInfo] = useState<{
     isOpen: boolean,
@@ -98,24 +104,6 @@ export function DayView({ date, appointments, users, onBack, onRefresh }: DayVie
     }
   }
 
-  // Zaman dilimi durumuna göre metin belirleme
-  const getStatusText = (userId: number, formattedTime: string) => {
-    const appointment = appointments.find(a => 
-      a.userId === userId && format(new Date(a.date), "HH:mm") === formattedTime
-    )
-    
-    const slotClosed = closedSlots.some(c => 
-      c.userId === userId && format(new Date(c.date), "HH:mm") === formattedTime
-    )
-
-    if (slotClosed) {
-      return "Kapalı"
-    } else if (appointment) {
-      return "Dolu"
-    } else {
-      return "Müsait"
-    }
-  }
   
   // Telefon numarasını formatlama (5XX XXX XX XX)
   const formatPhoneNumber = (phone: string): string => {
@@ -169,6 +157,42 @@ export function DayView({ date, appointments, users, onBack, onRefresh }: DayVie
     )
     
     return allSlotsClosed
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col bg-gray-50 min-h-screen">
+        <div className="bg-white border-b border-gray-200 rounded-md shadow-sm max-w-3xl md:max-w-4xl mx-auto w-full">
+          <div className="flex items-center justify-between p-2 md:p-3">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="flex items-center justify-center rounded-md h-8 w-8 hover:bg-gray-100 active:bg-gray-200 border border-gray-300" 
+              onClick={onBack}
+              aria-label="Takvime Dön"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="sr-only">Takvime Dön</span>
+            </Button>
+            
+            <div className="flex flex-col items-center">
+              <h2 className="text-base md:text-lg font-semibold text-gray-800">
+                {format(date, "d MMMM", { locale: tr })}
+              </h2>
+              <p className="text-xs text-gray-500">
+                {format(date, "EEEE", { locale: tr })}
+              </p>
+            </div>
+            
+            <div className="w-8"></div>
+          </div>
+        </div>
+
+        <main className="flex-1 px-2 pb-4 pt-2 md:px-4 md:pb-8 md:pt-4 max-w-3xl md:max-w-4xl mx-auto w-full">
+          <SkeletonLoader type="day" count={10} />
+        </main>
+      </div>
+    )
   }
 
   return (

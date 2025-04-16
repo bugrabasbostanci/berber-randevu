@@ -4,9 +4,11 @@ import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import FeedbackButton from "./feedback/FeedbackButton";
+import FeedbackViewButton from "./feedback/FeedbackViewButton";
 import FeedbackForm from "./feedback/FeedbackForm";
+import FeedbackList from "./feedback/FeedbackList";
 import { useState } from "react";
-import { Menu, MessageSquare, User, LogOut, LogIn } from "lucide-react";
+import { Menu, MessageSquare, User, LogOut, LogIn, ClipboardList } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   Dialog,
@@ -18,7 +20,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -37,7 +38,11 @@ export default function Header() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-2">
             <div className="w-auto">
-              <FeedbackButton />
+              {session ? (
+                <FeedbackViewButton />
+              ) : (
+                <FeedbackButton />
+              )}
             </div>
             {session ? (
               <Button
@@ -71,12 +76,27 @@ export default function Header() {
                   className="h-8 w-8 rounded-md"
                   aria-label="Geri bildirim menüsü"
                 >
-                  <MessageSquare className="h-5 w-5" />
+                  {session ? (
+                    <ClipboardList className="h-5 w-5" />
+                  ) : (
+                    <MessageSquare className="h-5 w-5" />
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="rounded-md">
                 <DropdownMenuItem asChild>
-                  <FeedbackButton />
+                  {session ? (
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start font-normal"
+                      onClick={() => setFeedbackOpen(true)}
+                    >
+                      <ClipboardList className="h-4 w-4 mr-2" />
+                      <span>Geri Bildirimler</span>
+                    </Button>
+                  ) : (
+                    <FeedbackButton />
+                  )}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -141,8 +161,17 @@ export default function Header() {
                         className="w-full flex items-center gap-2 justify-center rounded-md h-10 border-gray-300 hover:bg-gray-100 active:bg-gray-200 transition-colors cursor-pointer"
                         onClick={() => setFeedbackOpen(true)}
                       >
-                        <MessageSquare className="h-5 w-5" />
-                        <span className="font-medium">Geri Bildirim</span>
+                        {session ? (
+                          <>
+                            <ClipboardList className="h-5 w-5" />
+                            <span className="font-medium">Geri Bildirimler</span>
+                          </>
+                        ) : (
+                          <>
+                            <MessageSquare className="h-5 w-5" />
+                            <span className="font-medium">Geri Bildirim</span>
+                          </>
+                        )}
                       </Button>
                     </div>
                     
@@ -182,13 +211,19 @@ export default function Header() {
         </div>
       </div>
       
-      {/* Geri Bildirim Dialog */}
+      {/* Geri Bildirim Dialog - Mobil için */}
       <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
         <DialogContent className="sm:max-w-[425px] rounded-md">
           <DialogHeader>
-            <DialogTitle className="text-center">Geri Bildirim</DialogTitle>
+            <DialogTitle className="text-center">
+              {session ? "Geri Bildirimler" : "Geri Bildirim"}
+            </DialogTitle>
           </DialogHeader>
-          <FeedbackForm onClose={() => setFeedbackOpen(false)} />
+          {session ? (
+            <FeedbackList />
+          ) : (
+            <FeedbackForm onClose={() => setFeedbackOpen(false)} />
+          )}
         </DialogContent>
       </Dialog>
     </header>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
-import { Appointment, AllowedUser, ClosedSlot } from "@/types"
+import { Appointment, ClosedSlot } from "@/types"
 
 interface UseDayViewProps {
   date: Date

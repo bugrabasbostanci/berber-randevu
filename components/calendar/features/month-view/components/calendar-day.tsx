@@ -1,4 +1,4 @@
-import { format, isSameDay, isToday, isSameMonth } from "date-fns"
+import { format, isToday} from "date-fns"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { Appointment } from "@/types"
@@ -26,14 +26,11 @@ export const CalendarDay = ({
   day,
   appointments,
   isActive,
-  isSelected,
   isInCurrentMonth,
   isVisible,
   dayStatus,
   isAuthenticated,
   isMobile,
-  onDayClick,
-  getDayStatusClass,
   getDayIndicatorClass,
   maskName,
 }: CalendarDayProps) => {

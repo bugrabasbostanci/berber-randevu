@@ -34,15 +34,16 @@ export async function POST(request: Request) {
       )
     }
 
+    // Kullanıcı ID'sini alın (oturum açmış kullanıcı veya varsayılan değer)
+    const userId = session.user.id ? parseInt(session.user.id) : 1
+
     // Randevuyu oluştur
     const appointment = await prisma.appointment.create({
       data: {
-        customerName,
-        customerSurname,
+        fullname: `${customerName} ${customerSurname}`,
         date: appointmentDate,
-        service,
         phone,
-        status: "confirmed"
+        userId: userId,
       }
     })
 

@@ -1,7 +1,3 @@
-import { format } from "date-fns"
-import { tr } from "date-fns/locale"
-import { formatTime } from "@/components/calendar/shared/utils/date-utils"
-
 // Çalışma saatleri: 09:30 - 21:00, 45 dakikalık aralıklarla
 export const WORKING_HOURS = {
   start: 9.5, // 09:30
@@ -10,7 +6,7 @@ export const WORKING_HOURS = {
 }
 
 // Saat dilimlerini dizgi olarak oluştur
-export const generateTimeSlots = (date: Date): string[] => {
+export const generateTimeSlots = (): string[] => {
   const slots = []
   let currentTime = WORKING_HOURS.start
 

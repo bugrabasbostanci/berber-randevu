@@ -1,4 +1,4 @@
-import { getDay, format } from "date-fns"
+import { format } from "date-fns"
 import { tr } from "date-fns/locale"
 
 // Günün kapalı olup olmadığını kontrol et (Pazar günleri kapalı)
