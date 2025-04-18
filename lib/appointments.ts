@@ -1,56 +1,68 @@
 import { prisma } from './prisma'
+import { startOfDay, endOfDay, formatDatesForApi } from './utils'
 
 // Belirli bir gün için randevuları getir
-export async function getAppointmentsForDay(date: Date) {
-  const startOfDay = new Date(date)
-  startOfDay.setHours(0, 0, 0, 0)
+export async function getAppointmentsForDay(date: Date | string) {
+  const start = startOfDay(date)
+  const end = endOfDay(date)
 
-  const endOfDay = new Date(date)
-  endOfDay.setHours(23, 59, 59, 999)
-
-  return await prisma.appointment.findMany({
+  const appointments = await prisma.appointment.findMany({
     where: {
       date: {
-        gte: startOfDay,
-        lte: endOfDay,
+        gte: start,
+        lte: end,
       },
     },
     orderBy: {
       date: 'asc',
     },
   })
+  
+  return appointments.map(appointment => formatDatesForApi(appointment))
 }
 
 // Belirli bir tarih aralığı için randevuları getir
-export async function getAppointmentsForDateRange(startDate: Date, endDate: Date) {
-  return await prisma.appointment.findMany({
+export async function getAppointmentsForDateRange(startDate: Date | string, endDate: Date | string) {
+  const start = startOfDay(startDate)
+  const end = endOfDay(endDate)
+  
+  const appointments = await prisma.appointment.findMany({
     where: {
       date: {
-        gte: startDate,
-        lte: endDate,
+        gte: start,
+        lte: end,
       },
     },
     orderBy: {
       date: 'asc',
     },
   })
+  
+  return appointments.map(appointment => formatDatesForApi(appointment))
 }
 
 // Yeni randevu oluştur
 export async function createAppointment(data: {
   fullname: string
-  date: Date
+  date: Date | string
   phone: string
   userId: number
 }) {
-  return await prisma.appointment.create({
+  // String tipindeki tarihi Date nesnesine çevir
+  const appointmentDate = typeof data.date === 'string' 
+    ? new Date(data.date) 
+    : data.date
+
+  const appointment = await prisma.appointment.create({
     data: {
       fullname: data.fullname,
-      date: data.date,
+      date: appointmentDate,
       phone: data.phone,
       userId: data.userId,
     },
   })
+  
+  return formatDatesForApi(appointment)
 }
 
 // Randevu güncelle
@@ -58,20 +70,30 @@ export async function updateAppointment(
   id: string,
   data: {
     fullname?: string
-    date?: Date
+    date?: Date | string
     phone?: string
     userId?: number
   }
 ) {
-  return await prisma.appointment.update({
+  // String tipindeki tarihi Date nesnesine çevir
+  const appointmentData = { ...data }
+  if (data.date && typeof data.date === 'string') {
+    appointmentData.date = new Date(data.date)
+  }
+
+  const appointment = await prisma.appointment.update({
     where: { id },
-    data,
+    data: appointmentData,
   })
+  
+  return formatDatesForApi(appointment)
 }
 
 // Randevu sil
 export async function deleteAppointment(id: string) {
-  return await prisma.appointment.delete({
+  const appointment = await prisma.appointment.delete({
     where: { id },
   })
+  
+  return formatDatesForApi(appointment)
 } 

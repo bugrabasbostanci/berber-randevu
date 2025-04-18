@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { startOfDay, endOfDay } from "date-fns"
+import { startOfDay, endOfDay, formatDatesForApi } from "@/lib/utils"
 
 export async function GET(request: Request) {
   try {
@@ -14,8 +14,8 @@ export async function GET(request: Request) {
       )
     }
 
-    const start = startOfDay(new Date(date))
-    const end = endOfDay(new Date(date))
+    const start = startOfDay(date)
+    const end = endOfDay(date)
 
     const closedSlots = await prisma.closedSlot.findMany({
       where: {
@@ -29,7 +29,11 @@ export async function GET(request: Request) {
       }
     })
 
-    return NextResponse.json(closedSlots)
+    const formattedClosedSlots = closedSlots.map(slot => 
+      formatDatesForApi(slot)
+    )
+
+    return NextResponse.json(formattedClosedSlots)
   } catch (error) {
     console.error("Kapatılan zaman dilimleri getirilirken hata oluştu:", error)
     return NextResponse.json(

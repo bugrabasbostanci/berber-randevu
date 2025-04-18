@@ -1,6 +1,6 @@
 import { startOfDay, endOfDay, startOfMonth, endOfMonth } from "date-fns"
 import { Appointment, AllowedUser } from "@/types"
-import { toISODateString, dateToYMD } from "@/lib/utils"
+import { toISODateString } from "@/lib/utils"
 
 // Günlük maksimum randevu sayısı
 export const MAX_APPOINTMENTS_PER_DAY = 36
@@ -43,11 +43,10 @@ export function isDayFullyClosed(date: Date): boolean {
   // ISO formatına çevir (YYYY-MM-DD)
   const dateString = toISODateString(date)
   
-  // Ek olarak dateToYMD fonksiyonuyla da kontrol et (zaman dilimi sorunlarını önlemek için)
-  const dateStringAlt = dateToYMD(date)
+  // Zaman dilimi sorunlarını önlemek için sadece ISO formatını kullan
+  // dateToYMD fonksiyonu tanımlı olmadığı için kaldırıldı
   
-  // Her iki formatta da kontrol ederek güvenilirliği artır
-  return CLOSED_DATES.includes(dateString) || CLOSED_DATES.includes(dateStringAlt)
+  return CLOSED_DATES.includes(dateString)
 }
 
 // Belirli bir gün için randevuları getir

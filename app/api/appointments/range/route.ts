@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
+import { safeParseDate, formatDatesForApi } from "@/lib/utils"
 
 export async function GET(request: Request) {
   try {
@@ -14,11 +15,15 @@ export async function GET(request: Request) {
       )
     }
 
+    // Tutarlı şekilde tarihleri işle
+    const startDate = safeParseDate(start)
+    const endDate = safeParseDate(end)
+
     const appointments = await prisma.appointment.findMany({
       where: {
         date: {
-          gte: new Date(start),
-          lte: new Date(end)
+          gte: startDate,
+          lte: endDate
         }
       },
       include: {
@@ -29,7 +34,12 @@ export async function GET(request: Request) {
       }
     })
 
-    return NextResponse.json(appointments)
+    // Tutarlı formatta tarih dönüşümü
+    const formattedAppointments = appointments.map(appointment => 
+      formatDatesForApi(appointment)
+    )
+
+    return NextResponse.json(formattedAppointments)
   } catch (error) {
     console.error("Randevular getirilirken hata oluştu:", error)
     return NextResponse.json(

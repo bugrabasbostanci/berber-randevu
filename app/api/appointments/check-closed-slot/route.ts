@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { startOfDay, endOfDay } from "date-fns"
-import { formatDate, safeParseDate } from "@/lib/utils"
+import { startOfDay, endOfDay, formatDate, safeParseDate } from "@/lib/utils"
+import { DATE_FORMAT } from "@/lib/utils"
 
 export async function GET(request: Request) {
   try {
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
     // Gelen tarihi parse et
     const inputDate = safeParseDate(date)
-    const targetTime = formatDate(inputDate, "HH:mm")
+    const targetTime = formatDate(inputDate, DATE_FORMAT.ISO_TIME)
     
     // Günün başlangıç ve bitişini belirle
     const dayStart = startOfDay(inputDate)
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
 
     // Saati eşleşen slotu bul
     const isClosed = closedSlots.some(slot => {
-      const slotTime = formatDate(slot.date, "HH:mm")
+      const slotTime = formatDate(slot.date, DATE_FORMAT.ISO_TIME)
       return slotTime === targetTime
     })
 

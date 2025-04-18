@@ -1,22 +1,18 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { startOfDay, endOfDay } from "date-fns"
-import { formatDate, safeParseDate } from "@/lib/utils"
+import { startOfDay, endOfDay, formatDate, safeParseDate, setTimeToDate, formatDatesForApi } from "@/lib/utils"
+import { DATE_FORMAT } from "@/lib/utils"
 
 export async function POST(request: Request) {
   try {
     const { userId, date, reason } = await request.json()
     
     // Gelen tarihi güvenli bir şekilde işle
-    const rawDate = typeof date === 'string' ? date : date.toISOString()
-    console.log(`Gelen raw tarih: ${rawDate}`)
-    
-    // Tarihi parse et
-    const inputDate = safeParseDate(rawDate)
-    console.log(`Oluşturulan tarih nesnesi: ${inputDate.toISOString()}`)
+    const inputDate = typeof date === 'string' ? safeParseDate(date) : date
+    console.log(`Gelen tarih: ${inputDate.toISOString()}`)
     
     // Hedef saat formatını al
-    const targetTime = formatDate(inputDate, "HH:mm")
+    const targetTime = formatDate(inputDate, DATE_FORMAT.ISO_TIME)
     console.log(`Hedef saat dilimi: ${targetTime}`)
     
     // Günün başlangıç ve bitişini belirle
@@ -35,21 +31,20 @@ export async function POST(request: Request) {
     })
     
     if (existingClosedSlot) {
-      const existingTime = formatDate(existingClosedSlot.date, "HH:mm")
+      const existingTime = formatDate(existingClosedSlot.date, DATE_FORMAT.ISO_TIME)
       
       if (existingTime === targetTime) {
         console.log(`Bu zaman dilimi zaten kapalı: ${targetTime}`)
         return NextResponse.json({
           message: "Bu zaman dilimi zaten kapalı",
-          closedSlot: existingClosedSlot
+          closedSlot: formatDatesForApi(existingClosedSlot)
         })
       }
     }
 
-    // Hedef saati doğru şekilde ayarlayalım
-    const slotTime = new Date(dayStart)
+    // Hedef saat dilimini doğru şekilde ayarlayalım
     const [hours, minutes] = targetTime.split(":").map(Number)
-    slotTime.setHours(hours, minutes, 0, 0)
+    const slotTime = setTimeToDate(dayStart, hours, minutes)
 
     // Zaman dilimini kapat
     const closedSlot = await prisma.closedSlot.create({
@@ -62,10 +57,10 @@ export async function POST(request: Request) {
       }
     })
 
-    console.log(`Kapatılan zaman dilimi: ${formatDate(closedSlot.date, "HH:mm")}`)
+    console.log(`Kapatılan zaman dilimi: ${formatDate(closedSlot.date, DATE_FORMAT.ISO_TIME)}`)
     console.log(`Veritabanına yazılan tarih: ${closedSlot.date.toISOString()}`)
 
-    return NextResponse.json(closedSlot)
+    return NextResponse.json(formatDatesForApi(closedSlot))
   } catch (error) {
     console.error("Zaman dilimi kapatılırken hata oluştu:", error)
     return NextResponse.json(

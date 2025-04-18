@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { startOfDay, endOfDay, formatDatesForApi } from "@/lib/utils"
 
 export const dynamic = 'force-dynamic'
 
@@ -17,17 +18,15 @@ export async function GET(request: Request) {
       )
     }
 
-    const startOfDay = new Date(dateParam)
-    startOfDay.setHours(0, 0, 0, 0)
-    
-    const endOfDay = new Date(dateParam)
-    endOfDay.setHours(23, 59, 59, 999)
+    // Tutarlı şekilde günün başlangıç ve bitiş saatlerini belirle
+    const start = startOfDay(dateParam)
+    const end = endOfDay(dateParam)
 
     const appointments = await prisma.appointment.findMany({
       where: {
         date: {
-          gte: startOfDay,
-          lte: endOfDay,
+          gte: start,
+          lte: end,
         },
       },
       orderBy: {
@@ -35,13 +34,10 @@ export async function GET(request: Request) {
       },
     })
 
-    // Tarihleri string formatına dönüştür
-    const formattedAppointments = appointments.map(appointment => ({
-      ...appointment,
-      date: appointment.date.toISOString(),
-      createdAt: appointment.createdAt?.toISOString(),
-      updatedAt: appointment.updatedAt?.toISOString()
-    }))
+    // Tarihleri tutarlı bir şekilde formatla
+    const formattedAppointments = appointments.map(appointment => 
+      formatDatesForApi(appointment)
+    )
 
     return NextResponse.json(formattedAppointments)
   } catch (error) {
