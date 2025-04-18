@@ -1,5 +1,6 @@
 import { Appointment, ClosedSlot } from "@/types"
 import { formatTime } from "@/components/calendar/shared/utils/date-utils"
+import { format } from "date-fns"
 
 export const WORKING_HOURS = {
   start: 9.5, // 09:30
@@ -49,7 +50,7 @@ export const isSlotClosed = (
   return closedSlots.some(
     closedSlot => 
       closedSlot.userId === userId && 
-      formatTime(new Date(closedSlot.date)) === formattedTime
+      format(new Date(closedSlot.date), "HH:mm") === formattedTime
   )
 }
 
@@ -74,6 +75,6 @@ export const findClosedSlotReason = (
   return closedSlots.find(
     closedSlot => 
       closedSlot.userId === userId && 
-      formatTime(new Date(closedSlot.date)) === formattedTime
+      format(new Date(closedSlot.date), "HH:mm") === formattedTime
   )?.reason
 } 
