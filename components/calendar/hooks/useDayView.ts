@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import { Appointment, ClosedSlot } from "@/types"
 
@@ -18,23 +18,25 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
   const [dayToClose, setDayToClose] = useState<{ userId: number; date: Date } | null>(null)
   const [isAppointmentFormOpen, setIsAppointmentFormOpen] = useState(false)
   const [selectedSlotTime, setSelectedSlotTime] = useState<Date | null>(null)
+  const [closeDayReason, setCloseDayReason] = useState<string>('')
+
+  // fetchClosedSlots'u useCallback ile memoize edelim
+  const fetchClosedSlots = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/appointments/closed-slots?date=${date.toISOString()}`)
+      if (response.ok) {
+        const data = await response.json()
+        setClosedSlots(data)
+      }
+    } catch (error) {
+      console.error("Kapatılan zaman dilimleri getirilirken hata oluştu:", error)
+    }
+  }, [date]);
 
   // Kapatılan zaman dilimlerini getir
   useEffect(() => {
-    const fetchClosedSlots = async () => {
-      try {
-        const response = await fetch(`/api/appointments/closed-slots?date=${date.toISOString()}`)
-        if (response.ok) {
-          const data = await response.json()
-          setClosedSlots(data)
-        }
-      } catch (error) {
-        console.error("Kapatılan zaman dilimleri getirilirken hata oluştu:", error)
-      }
-    }
-
     fetchClosedSlots()
-  }, [date])
+  }, [fetchClosedSlots])
 
   const handleEdit = (appointment: Appointment) => {
     setSelectedAppointment(appointment)
@@ -99,6 +101,11 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
       }
 
       toast.success('Zaman dilimi başarıyla kapatıldı')
+      
+      // Kapalı slotları yeniden çek
+      await fetchClosedSlots()
+      
+      // Sonra sayfayı yenile
       onRefresh()
     } catch (error) {
       console.error('Zaman dilimi kapatılırken hata oluştu:', error)
@@ -123,7 +130,7 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
         body: JSON.stringify({
           userId: dayToClose.userId,
           date: dayToClose.date,
-          reason: 'Berber/Çalışan tarafından tüm gün kapatıldı'
+          reason: closeDayReason || 'Berber/Çalışan tarafından tüm gün kapatıldı'
         })
       })
 
@@ -133,6 +140,11 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
 
       const data = await response.json()
       toast.success(data.message)
+      
+      // Kapalı slotları yeniden çek
+      await fetchClosedSlots()
+      
+      // Sonra sayfayı yenile
       onRefresh()
     } catch (error) {
       console.error('Gün kapatılırken hata oluştu:', error)
@@ -140,6 +152,7 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
     } finally {
       setCloseDayDialogOpen(false)
       setDayToClose(null)
+      setCloseDayReason('')
     }
   }
 
@@ -161,10 +174,46 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
       }
 
       toast.success('Zaman dilimi başarıyla açıldı')
+      
+      // Kapalı slotları yeniden çek
+      await fetchClosedSlots()
+      
+      // Sonra sayfayı yenile
       onRefresh()
     } catch (error) {
       console.error('Zaman dilimi açılırken hata oluştu:', error)
       toast.error(error instanceof Error ? error.message : 'Zaman dilimi açılamadı')
+    }
+  }
+
+  const handleOpenDay = async (userId: number) => {
+    try {
+      const response = await fetch('/api/appointments/open-day', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          date
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Gün açılamadı')
+      }
+
+      const data = await response.json()
+      toast.success(data.message)
+      
+      // Kapalı slotları yeniden çek
+      await fetchClosedSlots()
+      
+      // Sonra sayfayı yenile
+      onRefresh()
+    } catch (error) {
+      console.error('Gün açılırken hata oluştu:', error)
+      toast.error(error instanceof Error ? error.message : 'Gün açılamadı')
     }
   }
 
@@ -196,6 +245,7 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
     handleCloseDay,
     confirmCloseDay,
     handleOpenSlot,
+    handleOpenDay,
     handleCloseAppointmentForm
   }
 } 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { startOfDay, endOfDay } from "date-fns"
+import { startOfDay, endOfDay, format } from "date-fns"
 
 export async function POST(request: Request) {
   try {
@@ -37,10 +37,17 @@ export async function POST(request: Request) {
       const slotDate = new Date(dayStart)
       slotDate.setHours(hours, minutes, 0, 0)
 
+      // Debug için güncel zaman bilgisini kontrol edelim
+      console.log(`Oluşturulan zaman dilimi: ${format(slotDate, "HH:mm")}`)
+      
       // Eğer bu slot zaten kapalı değilse ekle
-      if (!existingClosedSlots.some(
-        existing => existing.date.getTime() === slotDate.getTime()
-      )) {
+      const isAlreadyClosed = existingClosedSlots.some(existing => {
+        const existingTime = format(existing.date, "HH:mm")
+        const newTime = format(slotDate, "HH:mm")
+        return existingTime === newTime
+      })
+      
+      if (!isAlreadyClosed) {
         newClosedSlots.push({
           userId,
           date: slotDate,
@@ -55,6 +62,8 @@ export async function POST(request: Request) {
 
     // Sadece yeni zaman dilimlerini ekle
     if (newClosedSlots.length > 0) {
+      console.log(`${newClosedSlots.length} yeni zaman dilimi kapatılacak`)
+      
       const closedSlots = await prisma.closedSlot.createMany({
         data: newClosedSlots
       })
