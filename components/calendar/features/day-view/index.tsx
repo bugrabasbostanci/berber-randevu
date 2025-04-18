@@ -14,6 +14,7 @@ import { ChevronLeft, User, Phone, Clock, Calendar, Pencil, Trash2, Lock, Plus }
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { SkeletonLoader } from "../../shared/skeleton-loader"
+import {  formatTimeFromDate } from "@/lib/utils"
 
 interface DayViewProps {
   date: Date
@@ -87,13 +88,21 @@ export function DayView({
 
   // Zaman dilimi durumuna göre sınıf belirleme
   const getStatusClass = (userId: number, formattedTime: string) => {
-    const appointment = appointments.find(a => 
-      a.userId === userId && format(new Date(a.date), "HH:mm") === formattedTime
-    )
+    // Randevu kontrolü - sadece saat formatıyla karşılaştır
+    const appointment = appointments.find(a => {
+      if (a.userId !== userId) return false;
+      
+      const appTime = formatTimeFromDate(a.date);
+      return appTime === formattedTime;
+    });
     
-    const slotClosed = closedSlots.some(c => 
-      c.userId === userId && format(new Date(c.date), "HH:mm") === formattedTime
-    )
+    // Kapalı slot kontrolü - sadece saat formatıyla karşılaştır
+    const slotClosed = closedSlots.some(c => {
+      if (c.userId !== userId) return false;
+      
+      const closedTime = formatTimeFromDate(c.date);
+      return closedTime === formattedTime;
+    });
 
     if (slotClosed) {
       return "bg-red-100 text-red-700 border-red-200 hover:bg-red-200 md:hover:bg-red-200"
@@ -123,13 +132,17 @@ export function DayView({
 
   // Modal açma fonksiyonu
   const openSlotModal = (userId: number, slotTime: Date, formattedTime: string) => {
-    const appointment = appointments.find(a => 
-      a.userId === userId && format(new Date(a.date), "HH:mm") === formattedTime
-    )
+    // Randevu bulma - aynı saat diliminde olan
+    const appointment = appointments.find(a => {
+      if (a.userId !== userId) return false;
+      return formatTimeFromDate(a.date) === formattedTime;
+    });
     
-    const isSlotClosed = closedSlots.some(c => 
-      c.userId === userId && format(new Date(c.date), "HH:mm") === formattedTime
-    )
+    // Kapalı slot kontrolü
+    const isSlotClosed = closedSlots.some(c => {
+      if (c.userId !== userId) return false;
+      return formatTimeFromDate(c.date) === formattedTime;
+    });
     
     setSelectedSlotInfo({
       isOpen: true,
@@ -138,7 +151,7 @@ export function DayView({
       userId,
       slotTime,
       formattedTime
-    })
+    });
   }
 
   // Modal kapatma fonksiyonu
@@ -149,14 +162,25 @@ export function DayView({
   // Kullanıcı için günün tamamen kapalı olup olmadığını kontrol eder
   const isUserDayClosed = (userId: number): boolean => {
     // Çalışma saatleri, her saat için kontrol et
-    const workingHours = timeSlots.map(slot => slot.formattedTime)
+    const workingHours = timeSlots.map(slot => slot.formattedTime);
     
     // Tüm zaman dilimleri kapalı mı kontrol et
-    const allSlotsClosed = workingHours.every(hour => 
-      closedSlots.some(c => c.userId === userId && format(new Date(c.date), "HH:mm") === hour)
-    )
+    const allSlotsClosed = workingHours.every(hour => {
+      const isThisSlotClosed = closedSlots.some(c => {
+        if (c.userId !== userId) return false;
+        
+        // Tarih kontrolü yaparken sağlam bir format kullanarak karşılaştır
+        const closedSlotTime = formatTimeFromDate(c.date);
+        // Debug için log bırakalım
+        // console.log(`Karşılaştırma: ${closedSlotTime} - ${hour}`);
+        
+        return closedSlotTime === hour;
+      });
+      
+      return isThisSlotClosed;
+    });
     
-    return allSlotsClosed
+    return allSlotsClosed;
   }
 
   if (isLoading) {
@@ -277,9 +301,13 @@ export function DayView({
                     a.userId === user.id && format(new Date(a.date), "HH:mm") === slot.formattedTime
                   )
                   
-                  const isSlotClosed = closedSlots.some(c => 
-                    c.userId === user.id && format(new Date(c.date), "HH:mm") === slot.formattedTime
-                  )
+                  const isSlotClosed = closedSlots.some(c => {
+                    if (c.userId !== user.id) return false;
+                    
+                    // Tarih kontrolü yaparken sağlam bir format kullanarak karşılaştır
+                    const closedSlotTime = format(new Date(c.date), "HH:mm");
+                    return closedSlotTime === slot.formattedTime;
+                  })
                   
                   const handleClick = () => {
                     openSlotModal(user.id, slot.time, slot.formattedTime)
@@ -315,14 +343,20 @@ export function DayView({
                                   </span>
                                 </div>
                                 {/* Kapatma nedeni gösterimi */}
-                                {closedSlots.find(c => 
-                                  c.userId === user.id && format(new Date(c.date), "HH:mm") === slot.formattedTime
-                                )?.reason && (
+                                {closedSlots.find(c => {
+                                  if (c.userId !== user.id) return false;
+                                  // Tarih kontrolü yaparken sağlam bir format kullanarak karşılaştır
+                                  const closedSlotTime = format(new Date(c.date), "HH:mm");
+                                  return closedSlotTime === slot.formattedTime;
+                                })?.reason && (
                                   <div className="mt-1">
                                     <span className="text-[10px] md:text-xs text-red-600 italic line-clamp-2">
-                                      {closedSlots.find(c => 
-                                        c.userId === user.id && format(new Date(c.date), "HH:mm") === slot.formattedTime
-                                      )?.reason}
+                                      {closedSlots.find(c => {
+                                        if (c.userId !== user.id) return false;
+                                        // Tarih kontrolü yaparken sağlam bir format kullanarak karşılaştır
+                                        const closedSlotTime = format(new Date(c.date), "HH:mm");
+                                        return closedSlotTime === slot.formattedTime;
+                                      })?.reason}
                                     </span>
                                   </div>
                                 )}

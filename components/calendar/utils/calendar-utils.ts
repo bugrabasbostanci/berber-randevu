@@ -1,62 +1,60 @@
-import { 
-  startOfMonth, 
-  endOfMonth, 
-  eachDayOfInterval, 
-  getDay,
-  isBefore,
-  isAfter,
-  isSameDay 
-} from "date-fns"
+import { isBefore, isAfter, add } from "date-fns"
 import { MAX_APPOINTMENTS_PER_DAY, isDayFullyClosed } from "@/lib/data"
-import { Appointment } from "@/types"
-import { DayStatus } from "../features/month-view/components/calendar-day"
+import type { Appointment } from "@/types"
 
-// Tüm takvim günlerini getir
-export const getDaysToDisplay = (currentMonth: Date): Date[] => {
-  return eachDayOfInterval({
-    start: startOfMonth(currentMonth),
-    end: endOfMonth(currentMonth),
-  })
-}
+// DayStatus tipi
+export type DayStatus = "empty" | "low" | "medium" | "full" | "closed"
 
-// Takvim başlangıcı için boş günler (önceki aydan)
-export const getEmptyDaysAtStart = (currentMonth: Date): number => {
-  const startDay = getDay(startOfMonth(currentMonth))
-  return startDay === 0 ? 6 : startDay - 1 // Pazartesi başlangıç için
-}
+// Takvim görünümü özellikleri
+export const DAYS_IN_WEEK = 7
+export const CALENDAR_WEEK_COUNT = 6
+export const MONTH_NAMES = [
+  "Ocak",
+  "Şubat",
+  "Mart",
+  "Nisan",
+  "Mayıs",
+  "Haziran",
+  "Temmuz",
+  "Ağustos",
+  "Eylül",
+  "Ekim",
+  "Kasım",
+  "Aralık",
+]
 
 // Günün kapalı olup olmadığını kontrol et
 export const isDayClosed = (date: Date): boolean => {
   return date.getDay() === 0 // Sadece Pazar günleri kapalı
 }
 
-// Belirli bir gün için tüm randevuları filtrele
-export const getAppointmentsForDay = (
-  appointments: Appointment[], 
-  day: Date, 
-  isAuthenticated: boolean, 
-  today: Date,
-  maxDate: Date
-): Appointment[] => {
-  // Giriş yapılmamışsa ve gün 7 günlük periyot dışındaysa boş dizi döndür
-  if (!isAuthenticated && (isBefore(day, today) || isAfter(day, maxDate))) {
-    return []
+// Ay içindeki günleri oluştur
+export const getDaysInMonth = (month: number, year: number): Date[] => {
+  const date = new Date(year, month, 1)
+  const days: Date[] = []
+  const lastDayOfMonth = new Date(year, month + 1, 0).getDate()
+
+  // Ayın ilk gününden önceki günleri ekle
+  const firstDayOfWeek = date.getDay()
+  for (let i = 0; i < firstDayOfWeek; i++) {
+    days.push(add(date, { days: i - firstDayOfWeek }))
   }
 
-  return appointments.filter((appointment) =>
-    isSameDay(new Date(appointment.date), day)
-  ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-}
+  // Ayın günlerini ekle
+  for (let i = 1; i <= lastDayOfMonth; i++) {
+    days.push(new Date(year, month, i))
+  }
 
-// Belirli bir gün için randevu doluluk oranını hesapla
-export const getAppointmentFullnessForDay = (
-  appointments: Appointment[],
-  day: Date
-): number => {
-  const dayAppointments = appointments.filter((appointment) =>
-    isSameDay(new Date(appointment.date), day)
-  )
-  return dayAppointments.length / MAX_APPOINTMENTS_PER_DAY
+  // Son haftayı tamamlamak için sonraki ayın günlerini ekle
+  const lastDay = new Date(year, month, lastDayOfMonth)
+  const remainingDays = 7 - ((firstDayOfWeek + lastDayOfMonth) % 7)
+  if (remainingDays < 7) {
+    for (let i = 1; i <= remainingDays; i++) {
+      days.push(add(lastDay, { days: i }))
+    }
+  }
+
+  return days
 }
 
 // Günün doluluk durumunu belirle
@@ -74,42 +72,48 @@ export const getDayStatus = (
   return "full"
 }
 
-// Günün doluluk durumuna göre renk sınıfını belirle
-export const getDayStatusClass = (day: Date, appointments: Appointment[]): string => {
-  const status = getDayStatus(day, appointments)
-  switch (status) {
-    case "empty":
-      return "bg-white"
-    case "low":
-      return "bg-green-50"
-    case "medium":
-      return "bg-yellow-50"
-    case "full":
-      return "bg-red-50"
-    case "closed":
-      return "bg-gray-100"
-    default:
-      return "bg-white" // Varsayılan durum için dönüş değeri
-  }
+// Bir gün için randevu doluluk oranını getir
+export const getAppointmentFullnessForDay = (
+  appointments: Appointment[],
+  date: Date
+): number => {
+  const appointmentsForDay = appointments.filter((appointment) => {
+    const appointmentDate = new Date(appointment.date)
+    return (
+      appointmentDate.getDate() === date.getDate() &&
+      appointmentDate.getMonth() === date.getMonth() &&
+      appointmentDate.getFullYear() === date.getFullYear()
+    )
+  })
+
+  return appointmentsForDay.length / MAX_APPOINTMENTS_PER_DAY
 }
 
-// Günün doluluk durumuna göre gösterge rengi
-export const getDayIndicatorClass = (day: Date, appointments: Appointment[]): string => {
-  const status = getDayStatus(day, appointments)
-  switch (status) {
-    case "empty":
-      return "hidden"
-    case "low":
-      return "bg-green-400"
-    case "medium":
-      return "bg-yellow-400"
-    case "full":
-      return "bg-red-400"
-    case "closed":
-      return "bg-gray-400"
-    default:
-      return "hidden" // Varsayılan durum için dönüş değeri
-  }
+// Etkin ay içinde olup olmadığını kontrol et
+export const isInActiveMonth = (day: Date, activeMonth: number): boolean => {
+  return day.getMonth() === activeMonth
+}
+
+// Kullanıcı için uygun günleri formatla
+export const formatDaysForUser = async (
+  days: Date[],
+  activeMonth: number
+): Promise<{ day: Date; status: DayStatus; isActiveMonth: boolean }[]> => {
+  // Günleri ve durumlarını hazırla
+  const formattedDays = await Promise.all(
+    days.map(async (day) => {
+      const { appointments } = await import("@/lib/data").then(module => 
+        module.getAppointmentsForDate(day)
+      )
+      return {
+        day,
+        status: getDayStatus(day, appointments),
+        isActiveMonth: isInActiveMonth(day, activeMonth),
+      }
+    })
+  )
+
+  return formattedDays
 }
 
 // Günün aktif olup olmadığını kontrol et
@@ -117,25 +121,19 @@ export const isDayActive = (day: Date, isAuthenticated: boolean): boolean => {
   if (isAuthenticated) {
     return !isDayClosed(day) && !isDayFullyClosed(day)
   } else {
-    return !isBefore(day, new Date()) && !isAfter(day, new Date(Date.now() + 6 * 24 * 60 * 60 * 1000)) && !isDayClosed(day) && !isDayFullyClosed(day)
+    const today = new Date()
+    const sixDaysLater = new Date(today.getTime() + 6 * 24 * 60 * 60 * 1000)
+    
+    return !isBefore(day, today) && 
+           !isAfter(day, sixDaysLater) && 
+           !isDayClosed(day) && 
+           !isDayFullyClosed(day)
   }
 }
 
-// Günün görünür olup olmadığını kontrol et
-export const isDayVisible = (day: Date, isAuthenticated: boolean, today: Date, maxDate: Date): boolean => {
-  if (isAuthenticated) {
-    return true
-  } else {
-    return !isBefore(day, today) && !isAfter(day, maxDate)
-  }
-}
-
-// İsim gizleme fonksiyonu
-export const maskName = (fullname: string, isAuthenticated: boolean): string => {
-  if (isAuthenticated) {
-    return fullname
-  }
-  // İsim ve soyisim baş harflerini al
+// İsim-soyismi kısaltma
+export const abbreviateFullname = (fullname: string): string => {
+  if (!fullname) return ""
   const [name, surname] = fullname.split(" ")
   return `${name?.charAt(0) || ""}. ${surname?.charAt(0) || ""}.`
 } 

@@ -1,22 +1,29 @@
 import { startOfDay, endOfDay, startOfMonth, endOfMonth } from "date-fns"
 import { Appointment, AllowedUser } from "@/types"
+import { toISODateString, dateToYMD } from "@/lib/utils"
 
 // Günlük maksimum randevu sayısı
 export const MAX_APPOINTMENTS_PER_DAY = 36
 
-// Özel kapalı günler (örneğin bayramlar)
-const FULLY_CLOSED_DATES: string[] = [
+// Tüm kapalı günler (ISO formatında: YYYY-MM-DD)
+export const CLOSED_DATES: string[] = [
+  // 2024 Resmi Tatiller
+  "2024-01-01", // Yılbaşı
   "2024-04-10", // Ramazan Bayramı
-  "2024-04-11",
-  "2024-04-12",
+  "2024-04-11", // Ramazan Bayramı
+  "2024-04-12", // Ramazan Bayramı
+  "2024-04-23", // Ulusal Egemenlik ve Çocuk Bayramı
+  "2024-05-01", // Emek ve Dayanışma Günü
+  "2024-05-19", // Atatürk'ü Anma, Gençlik ve Spor Bayramı
   "2024-06-16", // Kurban Bayramı
-  "2024-06-17",
-  "2024-06-18",
-  "2024-06-19"
-]
-
-// Özel kapalı günler (tarih formatı: YYYY-MM-DD)
-export const SPECIAL_CLOSED_DAYS = [
+  "2024-06-17", // Kurban Bayramı
+  "2024-06-18", // Kurban Bayramı
+  "2024-06-19", // Kurban Bayramı
+  "2024-07-15", // Demokrasi ve Milli Birlik Günü
+  "2024-08-30", // Zafer Bayramı
+  "2024-10-29", // Cumhuriyet Bayramı
+  
+  // 2025 Resmi Tatiller
   "2025-01-01", // Yılbaşı
   "2025-04-23", // Ulusal Egemenlik ve Çocuk Bayramı
   "2025-05-01", // Emek ve Dayanışma Günü
@@ -33,8 +40,14 @@ export function getCurrentDate(): Date {
 
 // Belirli bir günün tamamen kapalı olup olmadığını kontrol et
 export function isDayFullyClosed(date: Date): boolean {
-  const dateString = date.toISOString().split("T")[0]
-  return FULLY_CLOSED_DATES.includes(dateString) || SPECIAL_CLOSED_DAYS.includes(dateString)
+  // ISO formatına çevir (YYYY-MM-DD)
+  const dateString = toISODateString(date)
+  
+  // Ek olarak dateToYMD fonksiyonuyla da kontrol et (zaman dilimi sorunlarını önlemek için)
+  const dateStringAlt = dateToYMD(date)
+  
+  // Her iki formatta da kontrol ederek güvenilirliği artır
+  return CLOSED_DATES.includes(dateString) || CLOSED_DATES.includes(dateStringAlt)
 }
 
 // Belirli bir gün için randevuları getir

@@ -1,7 +1,27 @@
 import { Appointment, ClosedSlot } from "@/types"
-import { formatTime } from "@/components/calendar/shared/utils/date-utils"
-import { format } from "date-fns"
+import { formatTimeFromDate } from "@/lib/utils"
 
+// Sabit çalışma saatleri
+export const WORKING_SLOTS = [
+  { hour: 9, minute: 30 },   // 09:30
+  { hour: 10, minute: 15 },  // 10:15
+  { hour: 11, minute: 0 },   // 11:00
+  { hour: 11, minute: 45 },  // 11:45
+  { hour: 12, minute: 30 },  // 12:30
+  { hour: 13, minute: 15 },  // 13:15
+  { hour: 14, minute: 0 },   // 14:00
+  { hour: 14, minute: 45 },  // 14:45
+  { hour: 15, minute: 30 },  // 15:30
+  { hour: 16, minute: 15 },  // 16:15
+  { hour: 17, minute: 0 },   // 17:00
+  { hour: 17, minute: 45 },  // 17:45
+  { hour: 18, minute: 30 },  // 18:30
+  { hour: 19, minute: 15 },  // 19:15
+  { hour: 20, minute: 0 },   // 20:00
+  { hour: 20, minute: 45 }   // 20:45
+]
+
+// Geriye dönük uyumluluk için eski WORKING_HOURS nesnesini koruyalım
 export const WORKING_HOURS = {
   start: 9.5, // 09:30
   end: 21,    // 21:00
@@ -11,21 +31,16 @@ export const WORKING_HOURS = {
 // Zaman dilimlerini oluşturan yardımcı fonksiyon
 export const generateTimeSlots = (date: Date) => {
   const slots = []
-  let currentTime = WORKING_HOURS.start
-
-  while (currentTime < WORKING_HOURS.end) {
-    const hours = Math.floor(currentTime)
-    const minutes = Math.round((currentTime % 1) * 60)
-    
+  
+  // Sabit zaman dilimlerini kullan
+  for (const slot of WORKING_SLOTS) {
     const slotDate = new Date(date)
-    slotDate.setHours(hours, minutes, 0, 0)
+    slotDate.setHours(slot.hour, slot.minute, 0, 0)
     
     slots.push({
       time: slotDate,
-      formattedTime: formatTime(slotDate)
+      formattedTime: formatTimeFromDate(slotDate)
     })
-    
-    currentTime += WORKING_HOURS.interval
   }
   
   return slots
@@ -47,11 +62,13 @@ export const isSlotClosed = (
   formattedTime: string, 
   closedSlots: ClosedSlot[]
 ): boolean => {
-  return closedSlots.some(
-    closedSlot => 
-      closedSlot.userId === userId && 
-      format(new Date(closedSlot.date), "HH:mm") === formattedTime
-  )
+  return closedSlots.some(closedSlot => {
+    if (closedSlot.userId !== userId) return false;
+    
+    // Karşılaştırma için sadece saat:dakika formatını kullan
+    const slotTime = formatTimeFromDate(closedSlot.date);
+    return slotTime === formattedTime;
+  });
 }
 
 // Bir zaman dilimi için randevu bul
@@ -60,10 +77,13 @@ export const findAppointmentForSlot = (
   formattedTime: string, 
   appointments: Appointment[]
 ): Appointment | undefined => {
-  return appointments.find(
-    app => app.userId === userId && 
-          formatTime(new Date(app.date)) === formattedTime
-  )
+  return appointments.find(app => {
+    if (app.userId !== userId) return false;
+    
+    // Karşılaştırma için sadece saat:dakika formatını kullan
+    const appTime = formatTimeFromDate(app.date);
+    return appTime === formattedTime;
+  });
 }
 
 // Bir zaman dilimi için kapanış nedeni bul
@@ -72,9 +92,13 @@ export const findClosedSlotReason = (
   formattedTime: string, 
   closedSlots: ClosedSlot[]
 ): string | undefined => {
-  return closedSlots.find(
-    closedSlot => 
-      closedSlot.userId === userId && 
-      format(new Date(closedSlot.date), "HH:mm") === formattedTime
-  )?.reason
+  const matchingSlot = closedSlots.find(closedSlot => {
+    if (closedSlot.userId !== userId) return false;
+    
+    // Karşılaştırma için sadece saat:dakika formatını kullan
+    const slotTime = formatTimeFromDate(closedSlot.date);
+    return slotTime === formattedTime;
+  });
+  
+  return matchingSlot?.reason;
 } 
