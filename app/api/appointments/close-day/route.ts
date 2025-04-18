@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { startOfDay, endOfDay } from "date-fns"
 import { formatDate, safeParseDate } from "@/lib/utils"
+import { WORKING_SLOTS } from "@/components/calendar/features/day-view/utils/day-view-utils"
 
 export async function POST(request: Request) {
   try {
@@ -34,30 +35,11 @@ export async function POST(request: Request) {
 
     console.log(`Mevcut kapalı zaman dilimi sayısı: ${existingClosedSlots.length}`)
 
-    // Sabit zaman dilimlerini tanımla
-    const workingSlots = [
-      { hour: 9, minute: 30 },   // 09:30
-      { hour: 10, minute: 15 },  // 10:15
-      { hour: 11, minute: 0 },   // 11:00
-      { hour: 11, minute: 45 },  // 11:45
-      { hour: 12, minute: 30 },  // 12:30
-      { hour: 13, minute: 15 },  // 13:15
-      { hour: 14, minute: 0 },   // 14:00
-      { hour: 14, minute: 45 },  // 14:45
-      { hour: 15, minute: 30 },  // 15:30
-      { hour: 16, minute: 15 },  // 16:15
-      { hour: 17, minute: 0 },   // 17:00
-      { hour: 17, minute: 45 },  // 17:45
-      { hour: 18, minute: 30 },  // 18:30
-      { hour: 19, minute: 15 },  // 19:15
-      { hour: 20, minute: 0 },   // 20:00
-      { hour: 20, minute: 45 }   // 20:45
-    ]
-
+    // Uygulama genelinde tanımlanmış sabit zaman dilimlerini kullan
     // Yeni kapatılacak zaman dilimlerini oluştur
     const newClosedSlots = []
 
-    for (const slot of workingSlots) {
+    for (const slot of WORKING_SLOTS) {
       // Her zaman dilimi için yeni bir tarih nesnesi oluştur
       const slotDate = new Date(dayStart)
       slotDate.setHours(slot.hour, slot.minute, 0, 0)

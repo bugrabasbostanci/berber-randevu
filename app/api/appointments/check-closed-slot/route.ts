@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { startOfDay, endOfDay } from "date-fns"
+import { formatDate, safeParseDate } from "@/lib/utils"
 
 export async function GET(request: Request) {
   try {
@@ -14,14 +16,32 @@ export async function GET(request: Request) {
       )
     }
 
-    const isClosed = await prisma.closedSlot.findFirst({
+    // Gelen tarihi parse et
+    const inputDate = safeParseDate(date)
+    const targetTime = formatDate(inputDate, "HH:mm")
+    
+    // Günün başlangıç ve bitişini belirle
+    const dayStart = startOfDay(inputDate)
+    const dayEnd = endOfDay(inputDate)
+
+    // İlgili güne ait tüm kapalı slotları getir
+    const closedSlots = await prisma.closedSlot.findMany({
       where: {
         userId: parseInt(userId),
-        date: new Date(date)
+        date: {
+          gte: dayStart,
+          lte: dayEnd
+        }
       }
     })
 
-    return NextResponse.json({ isClosed: !!isClosed })
+    // Saati eşleşen slotu bul
+    const isClosed = closedSlots.some(slot => {
+      const slotTime = formatDate(slot.date, "HH:mm")
+      return slotTime === targetTime
+    })
+
+    return NextResponse.json({ isClosed })
   } catch (error) {
     console.error("Kapatılmış saat dilimi kontrolü sırasında hata:", error)
     return NextResponse.json(

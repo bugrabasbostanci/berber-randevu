@@ -1,0 +1,12 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+Scope: api/**/*.ts
+
+- Always validate API inputs.
+- Use async/await consistently.
+- Follow RESTful conventions.
+- Optimize queries for performance.
+- Log errors but avoid noisy debug logs in prod.

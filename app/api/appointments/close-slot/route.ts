@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { startOfDay, endOfDay } from "date-fns"
 import { formatDate, safeParseDate } from "@/lib/utils"
 
 export async function POST(request: Request) {
@@ -13,21 +14,48 @@ export async function POST(request: Request) {
     // Tarihi parse et
     const inputDate = safeParseDate(rawDate)
     console.log(`Oluşturulan tarih nesnesi: ${inputDate.toISOString()}`)
-    console.log(`Formatlanmış tarih: ${formatDate(inputDate, "yyyy-MM-dd HH:mm:ss")}`)
+    
+    // Hedef saat formatını al
+    const targetTime = formatDate(inputDate, "HH:mm")
+    console.log(`Hedef saat dilimi: ${targetTime}`)
+    
+    // Günün başlangıç ve bitişini belirle
+    const dayStart = startOfDay(inputDate)
+    const dayEnd = endOfDay(inputDate)
+    
+    // Aynı saat ve gün için mevcut kapalı slotları kontrol et
+    const existingClosedSlot = await prisma.closedSlot.findFirst({
+      where: {
+        userId,
+        date: {
+          gte: dayStart,
+          lte: dayEnd
+        }
+      }
+    })
+    
+    if (existingClosedSlot) {
+      const existingTime = formatDate(existingClosedSlot.date, "HH:mm")
+      
+      if (existingTime === targetTime) {
+        console.log(`Bu zaman dilimi zaten kapalı: ${targetTime}`)
+        return NextResponse.json({
+          message: "Bu zaman dilimi zaten kapalı",
+          closedSlot: existingClosedSlot
+        })
+      }
+    }
 
-
-    // Yeni bir tarih nesnesi oluşturup sadece saat ve dakika bilgisi atayelım
-    const normalizedDate = new Date(inputDate)
-    normalizedDate.setSeconds(0, 0) // Saniyeleri ve milisaniyeleri sıfırla
-
-    console.log(`Normalize edilmiş tarih: ${normalizedDate.toISOString()}`)
-    console.log(`Normalize edilmiş saat: ${formatDate(normalizedDate, "HH:mm")}`)
+    // Hedef saati doğru şekilde ayarlayalım
+    const slotTime = new Date(dayStart)
+    const [hours, minutes] = targetTime.split(":").map(Number)
+    slotTime.setHours(hours, minutes, 0, 0)
 
     // Zaman dilimini kapat
     const closedSlot = await prisma.closedSlot.create({
       data: {
         userId,
-        date: normalizedDate,
+        date: slotTime,
         reason,
         createdAt: new Date(),
         updatedAt: new Date()

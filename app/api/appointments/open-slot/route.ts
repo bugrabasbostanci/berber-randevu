@@ -14,9 +14,8 @@ export async function POST(request: Request) {
     // Tarihi parse et
     const inputDate = safeParseDate(rawDate)
     console.log(`Zaman dilimi açma - Oluşturulan tarih: ${inputDate.toISOString()}`)
-    console.log(`Zaman dilimi açma - Formatlanmış: ${formatDate(inputDate, "yyyy-MM-dd HH:mm:ss")}`)
     
-    // Saat bilgisini alalım
+    // Hedef saat formatını al
     const targetTime = formatDate(inputDate, "HH:mm")
     console.log(`Hedef zaman dilimi: ${targetTime}`)
     
@@ -24,71 +23,46 @@ export async function POST(request: Request) {
     const dayStart = startOfDay(inputDate)
     const dayEnd = endOfDay(inputDate)
     
-    // O gün içinde belirtilen saate sahip tüm kapalı slotları bul ve sil
-    const deletedSlots = await prisma.closedSlot.deleteMany({
+    // İlgili güne ait tüm kapalı slotları getir
+    const daySlots = await prisma.closedSlot.findMany({
       where: {
         userId,
         date: {
           gte: dayStart,
           lte: dayEnd
-        },
-        // Tarih nesnesi için saat formatını kontrol edeceğiz
-        AND: {
-          date: {
-            // Raw SQL sorgusu ile saat karşılaştırması (veritabanı uyumlu)
-            equals: inputDate
-          }
         }
       }
     })
-
-    console.log(`Silinen zaman dilimi sayısı: ${deletedSlots.count}`)
     
-    // Silinen zaman dilimi yoksa spesifik saati bulmak için bir kez daha deneyelim
-    if (deletedSlots.count === 0) {
-      console.log("Tam eşleşme bulunamadı, saat formatıyla eşleşenleri arıyoruz...")
-      
-      // İlgili güne ait tüm kapalı slotları getir
-      const daySlots = await prisma.closedSlot.findMany({
+    // Saati uyuşan slotları bul
+    const matchingSlots = daySlots.filter(slot => {
+      const slotTime = formatDate(slot.date, "HH:mm")
+      const matches = slotTime === targetTime
+      console.log(`Slot ${slotTime} - hedef ${targetTime}: ${matches ? 'Eşleşti' : 'Eşleşmedi'}`)
+      return matches
+    })
+    
+    // Eşleşen slotları silmek için ID'lerini topla
+    if (matchingSlots.length > 0) {
+      const slotIds = matchingSlots.map(slot => slot.id)
+      const deleteResult = await prisma.closedSlot.deleteMany({
         where: {
-          userId,
-          date: {
-            gte: dayStart,
-            lte: dayEnd
+          id: {
+            in: slotIds
           }
         }
       })
+      console.log(`Saat eşleşmesiyle silinen: ${deleteResult.count}`)
       
-      // Saati uyuşan slotları bul
-      const matchingSlots = daySlots.filter(slot => {
-        const slotTime = formatDate(slot.date, "HH:mm")
-        const matches = slotTime === targetTime
-        console.log(`Slot ${slotTime} - hedef ${targetTime}: ${matches ? 'Eşleşti' : 'Eşleşmedi'}`)
-        return matches
+      return NextResponse.json({
+        message: `${deleteResult.count} zaman dilimi açıldı`,
+        count: deleteResult.count
       })
-      
-      // Eşleşen slotları silmek için ID'lerini topla
-      if (matchingSlots.length > 0) {
-        const slotIds = matchingSlots.map(slot => slot.id)
-        const deleteResult = await prisma.closedSlot.deleteMany({
-          where: {
-            id: {
-              in: slotIds
-            }
-          }
-        })
-        console.log(`Saat eşleşmesiyle silinen: ${deleteResult.count}`)
-        
-        return NextResponse.json({
-          message: `${deleteResult.count} zaman dilimi açıldı`,
-          count: deleteResult.count
-        })
-      }
     }
-
+    
     return NextResponse.json({
-      message: `${deletedSlots.count} zaman dilimi açıldı`,
-      count: deletedSlots.count
+      message: "Açılacak zaman dilimi bulunamadı",
+      count: 0
     })
   } catch (error) {
     console.error("Zaman dilimi açılırken hata oluştu:", error)

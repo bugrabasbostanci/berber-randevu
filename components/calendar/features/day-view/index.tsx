@@ -161,25 +161,37 @@ export function DayView({
 
   // Kullanıcı için günün tamamen kapalı olup olmadığını kontrol eder
   const isUserDayClosed = (userId: number): boolean => {
+    if (closedSlots.length === 0) return false;
+    
+    // WORKING_SLOTS değerlerini kullan (generateTimeSlots zaten bunları kullanıyor)
     // Çalışma saatleri, her saat için kontrol et
     const workingHours = timeSlots.map(slot => slot.formattedTime);
     
+    // Kontrol edilen slot sayısı
+    console.log(`Kontrol edilecek slot sayısı: ${workingHours.length}`);
+    console.log(`Mevcut kapalı slot sayısı: ${closedSlots.length}`);
+    
+    // Kullanıcıya ait kapalı slotlar
+    const userClosedSlots = closedSlots.filter(slot => slot.userId === userId);
+    console.log(`Kullanıcıya (${userId}) ait kapalı slot sayısı: ${userClosedSlots.length}`);
+    
+    // Kullanıcının kapalı slot saatleri
+    const closedHours = userClosedSlots.map(slot => formatTimeFromDate(slot.date));
+    console.log(`Kapalı saatler: ${closedHours.join(', ')}`);
+    
     // Tüm zaman dilimleri kapalı mı kontrol et
     const allSlotsClosed = workingHours.every(hour => {
-      const isThisSlotClosed = closedSlots.some(c => {
-        if (c.userId !== userId) return false;
-        
-        // Tarih kontrolü yaparken sağlam bir format kullanarak karşılaştır
-        const closedSlotTime = formatTimeFromDate(c.date);
-        // Debug için log bırakalım
-        // console.log(`Karşılaştırma: ${closedSlotTime} - ${hour}`);
-        
-        return closedSlotTime === hour;
-      });
+      const isThisSlotClosed = closedHours.includes(hour);
+      
+      // Debug için log bırakalım
+      if (!isThisSlotClosed) {
+        console.log(`Açık kalan zaman dilimi: ${hour}`);
+      }
       
       return isThisSlotClosed;
     });
     
+    console.log(`Tüm slotlar kapalı mı? ${allSlotsClosed ? 'Evet' : 'Hayır'}`);
     return allSlotsClosed;
   }
 
@@ -397,6 +409,35 @@ export function DayView({
         </div>
       </main>
 
+      {/* Dialogs */}
+      <DayViewDialogs
+        deleteDialogOpen={deleteDialogOpen}
+        setDeleteDialogOpen={setDeleteDialogOpen}
+        confirmDelete={confirmDelete}
+        closeDayDialogOpen={closeDayDialogOpen}
+        setCloseDayDialogOpen={setCloseDayDialogOpen}
+        confirmCloseDay={confirmCloseDay}
+        closeDayReason={closeDayReason}
+        setCloseDayReason={setCloseDayReason}
+        closeSlotDialogOpen={closeSlotDialogOpen}
+        setCloseSlotDialogOpen={setCloseSlotDialogOpen}
+        closeSlotReason={closeSlotReason}
+        setCloseSlotReason={setCloseSlotReason}
+        confirmCloseTimeSlot={confirmCloseTimeSlot}
+      />
+
+      {/* Appointment Form */}
+      <AppointmentForm
+        isOpen={isAppointmentFormOpen}
+        onClose={handleCloseAppointmentForm}
+        onSuccess={onRefresh}
+        appointment={selectedAppointment}
+        selectedDate={date}
+        userId={selectedUserId || 0}
+        isCreating={isCreating}
+        selectedTime={selectedSlotTime ? format(selectedSlotTime, "HH:mm") : undefined}
+      />
+
       {/* Randevu Slot Modalı */}
       <Dialog open={selectedSlotInfo.isOpen} onOpenChange={isOpen => {
         if (!isOpen) closeSlotModal();
@@ -570,37 +611,6 @@ export function DayView({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <AppointmentForm
-        isOpen={isAppointmentFormOpen}
-        onClose={handleCloseAppointmentForm}
-        onSuccess={onRefresh}
-        appointment={selectedAppointment}
-        selectedDate={date}
-        userId={selectedUserId || 1}
-        isCreating={isCreating}
-        selectedTime={selectedAppointment 
-          ? format(new Date(selectedAppointment.date), "HH:mm") 
-          : selectedSlotTime 
-            ? format(selectedSlotTime, "HH:mm") 
-            : undefined}
-      />
-
-      <DayViewDialogs
-        deleteDialogOpen={deleteDialogOpen}
-        setDeleteDialogOpen={setDeleteDialogOpen}
-        confirmDelete={confirmDelete}
-        closeDayDialogOpen={closeDayDialogOpen}
-        setCloseDayDialogOpen={setCloseDayDialogOpen}
-        confirmCloseDay={confirmCloseDay}
-        closeDayReason={closeDayReason}
-        setCloseDayReason={setCloseDayReason}
-        closeSlotDialogOpen={closeSlotDialogOpen}
-        setCloseSlotDialogOpen={setCloseSlotDialogOpen}
-        closeSlotReason={closeSlotReason}
-        setCloseSlotReason={setCloseSlotReason}
-        confirmCloseTimeSlot={confirmCloseTimeSlot}
-      />
     </div>
   )
 } 

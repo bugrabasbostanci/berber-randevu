@@ -19,6 +19,9 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
   const [isAppointmentFormOpen, setIsAppointmentFormOpen] = useState(false)
   const [selectedSlotTime, setSelectedSlotTime] = useState<Date | null>(null)
   const [closeDayReason, setCloseDayReason] = useState<string>('')
+  const [closeSlotReason, setCloseSlotReason] = useState<string>('')
+  const [closeSlotDialogOpen, setCloseSlotDialogOpen] = useState(false)
+  const [slotToClose, setSlotToClose] = useState<{ userId: number; time: Date } | null>(null)
 
   // fetchClosedSlots'u useCallback ile memoize edelim
   const fetchClosedSlots = useCallback(async () => {
@@ -82,7 +85,15 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
     setIsAppointmentFormOpen(true)
   }
 
-  const handleCloseTimeSlot = async (userId: number, time: Date) => {
+  const handleCloseTimeSlot = (userId: number, time: Date) => {
+    setSlotToClose({ userId, time })
+    setCloseSlotReason('')
+    setCloseSlotDialogOpen(true)
+  }
+
+  const confirmCloseTimeSlot = async () => {
+    if (!slotToClose) return
+
     try {
       const response = await fetch('/api/appointments/close-slot', {
         method: 'POST',
@@ -90,9 +101,9 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId,
-          date: time,
-          reason: 'Berber/Çalışan tarafından kapatıldı'
+          userId: slotToClose.userId,
+          date: slotToClose.time,
+          reason: closeSlotReason || 'Berber/Çalışan tarafından kapatıldı'
         })
       })
 
@@ -110,6 +121,10 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
     } catch (error) {
       console.error('Zaman dilimi kapatılırken hata oluştu:', error)
       toast.error(error instanceof Error ? error.message : 'Zaman dilimi kapatılamadı')
+    } finally {
+      setCloseSlotDialogOpen(false)
+      setSlotToClose(null)
+      setCloseSlotReason('')
     }
   }
 
@@ -235,6 +250,10 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
     selectedUserId,
     closeDayDialogOpen,
     setCloseDayDialogOpen,
+    closeSlotDialogOpen,
+    setCloseSlotDialogOpen,
+    closeSlotReason,
+    setCloseSlotReason,
     isAppointmentFormOpen,
     selectedSlotTime,
     handleEdit,
@@ -242,6 +261,7 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
     confirmDelete,
     handleCreate,
     handleCloseTimeSlot,
+    confirmCloseTimeSlot,
     handleCloseDay,
     confirmCloseDay,
     handleOpenSlot,
