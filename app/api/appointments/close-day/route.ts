@@ -47,10 +47,14 @@ export async function POST(request: Request) {
       }
     })
     
+    console.log(`Mevcut kapalı slot sayısı: ${existingClosedSlots.length}`)
+    
     // Kapalı slot saatlerini set olarak tut (performans için)
     const existingClosedHours = new Set(
       existingClosedSlots.map(slot => formatDate(slot.date, "HH:mm"))
     )
+    
+    console.log(`Kapalı saatler: ${Array.from(existingClosedHours).join(', ')}`)
     
     // Kapatılacak yeni slotları oluştur
     const newClosedSlots = []
@@ -72,7 +76,7 @@ export async function POST(request: Request) {
       const slotTime = formatDate(slotDate, "HH:mm")
       
       // Daha fazla debug bilgisi
-      console.log(`Kontrol edilen slot: ${slotTime}, Tarih: ${slotDate.toISOString()}`)
+      console.log(`Kontrol edilen slot: ${slotTime}, Tarih: ${slotDate.toISOString()}, Kapalı mı: ${existingClosedHours.has(slotTime)}`)
       
       // Eğer bu saat zaten kapalı değilse, kapatılacaklar listesine ekle
       if (!existingClosedHours.has(slotTime)) {
@@ -86,11 +90,60 @@ export async function POST(request: Request) {
       }
     }
     
-    // Eğer eklenecek yeni slot yoksa, mesaj döndür
+    console.log(`Kapatılacak yeni slot sayısı: ${newClosedSlots.length}`)
+    console.log(`Çalışma saati sayısı: ${WORKING_SLOTS.length}`)
+    
+    // Eğer eklenecek yeni slot yoksa ve mevcut kapalı slot sayısı toplam slot sayısından azsa,
+    // bir hata var demektir, bu durumda kullanıcıya uygun mesaj göster
     if (newClosedSlots.length === 0) {
-      return NextResponse.json({
-        message: "Tüm zaman dilimleri zaten kapalı"
-      })
+      if (existingClosedSlots.length < WORKING_SLOTS.length) {
+        console.log(`Uyarı: Kapatılacak yeni slot yok, ancak mevcut kapalı slot sayısı (${existingClosedSlots.length}) toplam slot sayısından (${WORKING_SLOTS.length}) az.`)
+        
+        // Mevcut slotları temizle ve tümünü yeniden oluştur
+        await prisma.closedSlot.deleteMany({
+          where: {
+            userId,
+            date: {
+              gte: dayStart,
+              lte: dayEnd
+            }
+          }
+        })
+        
+        // Tüm slotları yeniden oluştur
+        const allSlots = WORKING_SLOTS.map(slot => {
+          const slotDate = new Date(
+            dayStart.getFullYear(),
+            dayStart.getMonth(),
+            dayStart.getDate(),
+            slot.hour,
+            slot.minute,
+            0,
+            0
+          )
+          
+          return {
+            userId,
+            date: slotDate,
+            reason: reason || 'Berber/Çalışan tarafından kapatıldı',
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }
+        })
+        
+        const createdSlots = await prisma.closedSlot.createMany({
+          data: allSlots
+        })
+        
+        return NextResponse.json({
+          message: `Tüm zaman dilimleri yeniden kapatıldı (${createdSlots.count} slot)`,
+          closedCount: createdSlots.count
+        })
+      } else {
+        return NextResponse.json({
+          message: "Tüm zaman dilimleri zaten kapalı"
+        })
+      }
     }
     
     // Yeni slotları ekle

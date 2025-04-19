@@ -96,19 +96,35 @@ export function DayView({
     // Çalışma saatlerini elde et
     const workingHours = timeSlots.map(slot => slot.formattedTime);
     
+    // Kullanıcıya ait kapalı slotlar
+    const userClosedSlots = closedSlots.filter(slot => slot.userId === userId);
+    
     // Kullanıcıya ait kapalı slotların sayısını kontrol et
-    const userClosedSlotsCount = closedSlots.filter(slot => slot.userId === userId).length;
+    const userClosedSlotsCount = userClosedSlots.length;
     
     console.log(`${userId} numaralı kullanıcı için ${userClosedSlotsCount} adet kapalı slot var.`);
     console.log(`Toplam çalışma saati: ${workingHours.length}`);
     
+    // Kapalı saatleri bir diziye al
+    const closedHours = userClosedSlots.map(slot => {
+      // closedSlot.date string veya Date olabilir
+      const date = typeof slot.date === 'string' ? new Date(slot.date) : slot.date;
+      return format(date, "HH:mm");
+    });
+    
+    console.log(`${userId} numaralı kullanıcı için kapalı saatler: ${closedHours.join(', ')}`);
+    
     // Kapalı slot sayısı, toplam slot sayısına eşitse, tüm gün kapalıdır
     if (userClosedSlotsCount >= workingHours.length) {
+      console.log(`${userId} numaralı kullanıcı için tüm gün kapalı (sayı kontrolü)`);
       return true;
     }
     
     // Daha detaylı kontrol için yardımcı fonksiyonu kullan
-    return isAllDayClosed(userId, workingHours, closedSlots);
+    const allClosed = isAllDayClosed(userId, workingHours, closedSlots);
+    console.log(`${userId} numaralı kullanıcı için tüm gün kapalı mı (detaylı kontrol): ${allClosed ? 'EVET' : 'HAYIR'}`);
+    
+    return allClosed;
   }
 
   // Zaman dilimi durumuna göre sınıf belirleme

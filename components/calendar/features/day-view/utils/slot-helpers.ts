@@ -95,25 +95,49 @@ export const isDayClosed = (
   workingHours: string[],
   closedSlots: ClosedSlot[]
 ): boolean => {
-  if (closedSlots.length === 0) return false;
+  if (closedSlots.length === 0) {
+    console.log(`isDayClosed - Hiç kapalı slot yok`);
+    return false;
+  }
   
   // Kullanıcıya ait kapalı slotlar
   const userClosedSlots = closedSlots.filter(slot => slot.userId === userId);
   
-  if (userClosedSlots.length === 0) return false;
+  if (userClosedSlots.length === 0) {
+    console.log(`isDayClosed - ${userId} numaralı kullanıcı için hiç kapalı slot yok`);
+    return false;
+  }
   
+  // Günlük tüm çalışma saatlerini ve kapalı saatleri karşılaştıralım
   console.log(`isDayClosed - Kullanıcı ${userId} için kontrol ediliyor`);
   console.log(`isDayClosed - Çalışma saatleri: ${workingHours.join(', ')}`);
   
-  // Kapalı saatler
+  // Kapalı saatler - tarih formatını güvenli bir şekilde işleme
   const closedHours = userClosedSlots.map(slot => {
-    const timeStr = getTimeString(slot.date);
-    return timeStr;
-  });
+    let date;
+    if (typeof slot.date === 'string') {
+      date = new Date(slot.date);
+    } else if (slot.date instanceof Date) {
+      date = slot.date;
+    } else {
+      console.error('isDayClosed - Geçersiz slot.date formatı:', slot.date);
+      // Varsayılan olarak boş string döndür, bu saat eşleşmeyecek
+      return '';
+    }
+    
+    try {
+      // Format: HH:mm
+      return date.getHours().toString().padStart(2, '0') + ':' + 
+             date.getMinutes().toString().padStart(2, '0');
+    } catch (error) {
+      console.error('isDayClosed - Tarih formatlarken hata:', error);
+      return '';
+    }
+  }).filter(timeStr => timeStr !== ''); // Boş değerleri filtrele
   
   console.log(`isDayClosed - Kapalı saatler: ${closedHours.join(', ')}`);
   
-  // Daha açık debug bilgisi için her bir çalışma saatini teker teker kontrol et
+  // Her çalışma saati için, o saatin kapalı olup olmadığını kontrol et
   const allClosed = workingHours.every(hour => {
     const isClosed = closedHours.includes(hour);
     console.log(`isDayClosed - Saat ${hour} kapalı mı? ${isClosed ? 'EVET' : 'HAYIR'}`);
