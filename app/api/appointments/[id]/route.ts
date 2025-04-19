@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { safeParseDate, formatDatesForApi } from "@/lib/utils"
 
 export async function DELETE(
   request: Request,
@@ -12,7 +13,7 @@ export async function DELETE(
       where: { id }
     })
 
-    return NextResponse.json(appointment)
+    return NextResponse.json(formatDatesForApi(appointment))
   } catch (error) {
     console.error("Randevu silinirken hata oluştu:", error)
     return NextResponse.json(
@@ -34,7 +35,7 @@ export async function PUT(
       where: { id },
       data: {
         fullname: data.fullname,
-        date: new Date(data.date),
+        date: safeParseDate(data.date),
         phone: data.phone,
         userId: data.userId
       },
@@ -43,7 +44,7 @@ export async function PUT(
       }
     })
 
-    return NextResponse.json(appointment)
+    return NextResponse.json(formatDatesForApi(appointment))
   } catch (error) {
     console.error("Randevu güncellenirken hata oluştu:", error)
     return NextResponse.json(

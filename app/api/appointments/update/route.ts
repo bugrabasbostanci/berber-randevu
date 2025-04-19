@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
+import { safeParseDate, formatDatesForApi } from "@/lib/utils"
 
 export async function PUT(request: Request) {
   try {
@@ -25,8 +26,8 @@ export async function PUT(request: Request) {
       )
     }
 
-    // Randevu tarihini kontrol et
-    const appointmentDate = new Date(date)
+    // Randevu tarihini güvenli bir şekilde ayrıştır
+    const appointmentDate = safeParseDate(date)
     if (isNaN(appointmentDate.getTime())) {
       return NextResponse.json(
         { error: "Geçersiz tarih" },
@@ -44,10 +45,11 @@ export async function PUT(request: Request) {
       }
     })
 
+    // API yanıtında tarihleri tutarlı bir formatta döndür
     return NextResponse.json({
       success: true,
       message: "Randevu başarıyla güncellendi",
-      appointment
+      appointment: formatDatesForApi(appointment)
     })
 
   } catch (error) {

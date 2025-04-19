@@ -4,13 +4,20 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Appointment } from "@/types"
-import { format } from "date-fns"
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import { Loader } from "@/components/ui/loader"
 import { useCalendarContext } from "./shared/context/calendar-context"
+import { 
+  formatDate, 
+  safeParseDate, 
+  DATE_FORMAT, 
+  toISODateString, 
+  formatTimeFromDate,
+  isSameTime 
+} from "@/lib/utils"
 
 interface AppointmentFormProps {
   isOpen: boolean
@@ -59,8 +66,8 @@ export function AppointmentForm({
   const { refreshCalendar } = useCalendarContext()
   const [formData, setFormData] = useState({
     fullname: "",
-    date: typeof selectedDate === 'string' ? selectedDate : format(selectedDate, "yyyy-MM-dd"),
-    time: selectedTime || format(new Date(selectedDate), "HH:mm"),
+    date: typeof selectedDate === 'string' ? selectedDate : toISODateString(selectedDate),
+    time: selectedTime || formatTimeFromDate(selectedDate),
     phone: "",
     userId: userId
   })
@@ -75,8 +82,8 @@ export function AppointmentForm({
       // Form verilerini sıfırla
       setFormData({
         fullname: "",
-        date: typeof selectedDate === 'string' ? selectedDate : format(selectedDate, "yyyy-MM-dd"),
-        time: selectedTime || format(new Date(selectedDate), "HH:mm"),
+        date: typeof selectedDate === 'string' ? selectedDate : toISODateString(selectedDate),
+        time: selectedTime || formatTimeFromDate(selectedDate),
         phone: "",
         userId: userId
       })
@@ -89,15 +96,15 @@ export function AppointmentForm({
     if (appointment) {
       setFormData({
         fullname: appointment.fullname,
-        date: format(new Date(appointment.date), "yyyy-MM-dd"),
-        time: format(new Date(appointment.date), "HH:mm"),
+        date: toISODateString(appointment.date),
+        time: formatTimeFromDate(appointment.date),
         phone: appointment.phone,
         userId: userId
       })
     } else if (isCreating) {
       setFormData(prev => ({
         ...prev,
-        time: selectedTime || format(new Date(selectedDate), "HH:mm")
+        time: selectedTime || formatTimeFromDate(selectedDate)
       }))
     }
   }, [appointment, isCreating, selectedDate, userId, selectedTime])
@@ -111,11 +118,12 @@ export function AppointmentForm({
     const fetchBookedSlots = async () => {
       setIsLoadingSlots(true)
       try {
-        const response = await fetch(`/api/appointments/date/${format(selectedDate as Date, "yyyy-MM-dd")}`)
+        const dateStr = toISODateString(selectedDate)
+        const response = await fetch(`/api/appointments/date/${dateStr}`)
         if (response.ok) {
           const appointments = await response.json()
           const bookedTimes = appointments.map((app: Appointment) => 
-            format(new Date(app.date), "HH:mm")
+            formatTimeFromDate(app.date)
           )
           setBookedSlots(bookedTimes)
         }
@@ -140,8 +148,8 @@ export function AppointmentForm({
 
     try {
       // Seçilen saat diliminin dolu olup olmadığını kontrol et
-      const selectedDateTime = new Date(`${formData.date}T${formData.time}`)
-      const formattedTime = format(selectedDateTime, "HH:mm")
+      const selectedDateTime = safeParseDate(`${formData.date}T${formData.time}`)
+      const formattedTime = formatTimeFromDate(selectedDateTime)
       
       // Yeni randevu oluşturulurken dolu saat kontrolü
       if (!appointment && bookedSlots.includes(formattedTime)) {

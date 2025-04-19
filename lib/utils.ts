@@ -56,13 +56,18 @@ export function safeParseDate(dateStr: string): Date {
 export function formatDate(date: Date | string, formatStr: string = DATE_FORMAT.ISO_DATE): string {
   if (!date) return "";
   
-  // Eğer string ise, önce Date'e çevir
-  const dateObj = typeof date === "string" ? safeParseDate(date) : date;
-  
   try {
+    // String ise Date'e çevir
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+    
+    // Geçerli bir tarih mi kontrol et
+    if (isNaN(dateObj.getTime())) {
+      throw new Error("Geçersiz tarih");
+    }
+    
     return format(dateObj, formatStr, { locale: tr });
   } catch (error) {
-    console.error("Tarih formatlanırken hata:", error);
+    console.error("Tarih formatlanırken hata:", error, "Tarih:", date, "Format:", formatStr);
     return "";
   }
 }
@@ -95,7 +100,15 @@ export function endOfDay(date: Date | string): Date {
  * @returns Saat formatında string (HH:mm)
  */
 export function formatTimeFromDate(date: Date | string): string {
-  return formatDate(date, DATE_FORMAT.ISO_TIME);
+  if (!date) return "";
+  
+  try {
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+    return format(dateObj, DATE_FORMAT.ISO_TIME, { locale: tr });
+  } catch (error) {
+    console.error("Saat formatlanırken hata:", error);
+    return "";
+  }
 }
 
 /**

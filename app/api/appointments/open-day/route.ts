@@ -1,42 +1,37 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { startOfDay, endOfDay } from "date-fns"
-import { formatDate, safeParseDate } from "@/lib/utils"
+import { formatDate } from "@/lib/utils"
 
 export async function POST(request: Request) {
   try {
     const { userId, date } = await request.json()
     
-    // Gelen tarihi güvenli bir şekilde işle
-    const rawDate = typeof date === 'string' ? date : date.toISOString()
-    console.log(`Gün açma - Alınan tarih: ${rawDate}`)
+    if (!userId || !date) {
+      return NextResponse.json(
+        { error: "Kullanıcı ID ve tarih gereklidir" },
+        { status: 400 }
+      )
+    }
     
-    // Tarihi parse et
-    const parsedDate = safeParseDate(rawDate)
+    // Gelen tarihi işle
+    const parsedDate = typeof date === 'string' ? new Date(date) : new Date(date)
+    
+    // Geçerli bir tarih mi kontrol et
+    if (isNaN(parsedDate.getTime())) {
+      return NextResponse.json(
+        { error: "Geçersiz tarih formatı" },
+        { status: 400 }
+      )
+    }
     
     // Günün başlangıç ve bitişini hesapla
     const dayStart = startOfDay(parsedDate)
     const dayEnd = endOfDay(parsedDate)
     
-    console.log(`Gün başlangıcı: ${formatDate(dayStart, "yyyy-MM-dd HH:mm:ss")}`)
-    console.log(`Gün bitişi: ${formatDate(dayEnd, "yyyy-MM-dd HH:mm:ss")}`)
-
-    // Gün içindeki tüm kapalı slotları getir (silmeden önce)
-    const existingSlots = await prisma.closedSlot.findMany({
-      where: {
-        userId,
-        date: {
-          gte: dayStart,
-          lte: dayEnd
-        }
-      }
-    })
+    // Log ekleme
+    console.log(`Gün açma isteği - Kullanıcı: ${userId}, Tarih: ${formatDate(dayStart, "yyyy-MM-dd")}`)
     
-    console.log(`Silinecek slot sayısı: ${existingSlots.length}`)
-    existingSlots.forEach(slot => {
-      console.log(`- ${formatDate(slot.date, "HH:mm")}`)
-    })
-
     // Gün içindeki tüm kapalı slotları sil
     const deletedSlots = await prisma.closedSlot.deleteMany({
       where: {
@@ -47,10 +42,10 @@ export async function POST(request: Request) {
         }
       }
     })
-
+    
     return NextResponse.json({
       message: `Gün başarıyla açıldı (${deletedSlots.count} zaman dilimi açıldı)`,
-      deletedSlots
+      count: deletedSlots.count
     })
   } catch (error) {
     console.error("Gün açılırken hata oluştu:", error)

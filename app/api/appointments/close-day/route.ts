@@ -1,28 +1,39 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { startOfDay, endOfDay } from "date-fns"
-import { formatDate, safeParseDate } from "@/lib/utils"
+import { formatDate } from "@/lib/utils"
 import { WORKING_SLOTS } from "@/components/calendar/features/day-view/utils/day-view-utils"
 
 export async function POST(request: Request) {
   try {
     const { userId, date, reason } = await request.json()
     
-    // Gelen tarihi doğru şekilde işle
-    const inputDate = typeof date === 'string' ? date : date.toISOString()
-    console.log(`Alınan ham tarih: ${inputDate}`)
+    if (!userId || !date) {
+      return NextResponse.json(
+        { error: "Kullanıcı ID ve tarih gereklidir" },
+        { status: 400 }
+      )
+    }
     
-    // Tarihi güvenli bir şekilde parse et
-    const parsedDate = safeParseDate(inputDate)
+    // Gelen tarihi işle
+    const parsedDate = typeof date === 'string' ? new Date(date) : new Date(date)
+    
+    // Geçerli bir tarih mi kontrol et
+    if (isNaN(parsedDate.getTime())) {
+      return NextResponse.json(
+        { error: "Geçersiz tarih formatı" },
+        { status: 400 }
+      )
+    }
     
     // Günün başlangıç ve bitişini ayarla
     const dayStart = startOfDay(parsedDate)
     const dayEnd = endOfDay(parsedDate)
     
-    console.log(`Günün başlangıcı: ${formatDate(dayStart, "yyyy-MM-dd HH:mm:ss")}`)
-    console.log(`Günün bitişi: ${formatDate(dayEnd, "yyyy-MM-dd HH:mm:ss")}`)
-
-    // Önce mevcut kapalı zaman dilimlerini kontrol et
+    // Log ekleme
+    console.log(`Gün kapatma isteği - Kullanıcı: ${userId}, Tarih: ${formatDate(dayStart, "yyyy-MM-dd")}`)
+    
+    // Önce mevcut kapalı zaman dilimlerini getir
     const existingClosedSlots = await prisma.closedSlot.findMany({
       where: {
         userId,
@@ -30,73 +41,55 @@ export async function POST(request: Request) {
           gte: dayStart,
           lte: dayEnd
         }
+      },
+      select: {
+        date: true
       }
     })
-
-    console.log(`Mevcut kapalı zaman dilimi sayısı: ${existingClosedSlots.length}`)
-
-    // Uygulama genelinde tanımlanmış sabit zaman dilimlerini kullan
-    // Yeni kapatılacak zaman dilimlerini oluştur
+    
+    // Kapalı slot saatlerini set olarak tut (performans için)
+    const existingClosedHours = new Set(
+      existingClosedSlots.map(slot => formatDate(slot.date, "HH:mm"))
+    )
+    
+    // Kapatılacak yeni slotları oluştur
     const newClosedSlots = []
-
+    
     for (const slot of WORKING_SLOTS) {
-      // Her zaman dilimi için yeni bir tarih nesnesi oluştur
+      // Slot için tarih oluştur
       const slotDate = new Date(dayStart)
       slotDate.setHours(slot.hour, slot.minute, 0, 0)
-
-      // Oluşturulan zaman diliminin saatini formatla
-      const formattedSlotTime = formatDate(slotDate, "HH:mm")
-      console.log(`İşlenen zaman dilimi: ${formattedSlotTime}`)
       
-      // Eğer bu slot zaten kapalı değilse ekle
-      const isAlreadyClosed = existingClosedSlots.some(existing => {
-        // Mevcut kapalı slot'un saatini kontrol et
-        const existingTime = formatDate(existing.date, "HH:mm")
-        console.log(`Karşılaştırma: mevcut=${existingTime}, yeni=${formattedSlotTime}`)
-        return existingTime === formattedSlotTime
-      })
+      // Saat formatını al
+      const slotTime = formatDate(slotDate, "HH:mm")
       
-      if (!isAlreadyClosed) {
-        console.log(`Yeni kapatılacak zaman dilimi: ${formattedSlotTime}`)
+      // Eğer bu saat zaten kapalı değilse, kapatılacaklar listesine ekle
+      if (!existingClosedHours.has(slotTime)) {
         newClosedSlots.push({
           userId,
           date: slotDate,
-          reason,
+          reason: reason || 'Berber/Çalışan tarafından kapatıldı',
           createdAt: new Date(),
           updatedAt: new Date()
         })
       }
     }
-
-    // Sadece yeni zaman dilimlerini ekle
-    if (newClosedSlots.length > 0) {
-      console.log(`${newClosedSlots.length} yeni zaman dilimi kapatılacak:`)
-      newClosedSlots.forEach(slot => {
-        console.log(`- ${formatDate(slot.date, "HH:mm")}`)
+    
+    // Eğer eklenecek yeni slot yoksa, mesaj döndür
+    if (newClosedSlots.length === 0) {
+      return NextResponse.json({
+        message: "Tüm zaman dilimleri zaten kapalı"
       })
-      
-      try {
-        const closedSlots = await prisma.closedSlot.createMany({
-          data: newClosedSlots
-        })
-        
-        console.log(`DB eklenen sonuç: ${JSON.stringify(closedSlots)}`)
-
-        return NextResponse.json({
-          message: `${newClosedSlots.length} zaman dilimi kapatıldı`,
-          closedSlots
-        })
-      } catch (dbError) {
-        console.error("Veritabanı işleminde hata:", dbError)
-        return NextResponse.json(
-          { error: "Veritabanına zaman dilimleri eklenirken hata oluştu" },
-          { status: 500 }
-        )
-      }
     }
-
+    
+    // Yeni slotları ekle
+    const closedSlots = await prisma.closedSlot.createMany({
+      data: newClosedSlots
+    })
+    
     return NextResponse.json({
-      message: "Tüm zaman dilimleri zaten kapalı"
+      message: `${newClosedSlots.length} zaman dilimi kapatıldı`,
+      closedCount: closedSlots.count
     })
   } catch (error) {
     console.error("Gün kapatılırken hata oluştu:", error)

@@ -15,6 +15,13 @@ import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { SkeletonLoader } from "../../shared/skeleton-loader"
 import {  formatTimeFromDate } from "@/lib/utils"
+import { 
+  getTimeString, 
+  findAppointment, 
+  isTimeSlotClosed, 
+  getClosedSlotReason,
+  isDayClosed as isAllDayClosed
+} from "./utils/slot-helpers";
 
 interface DayViewProps {
   date: Date
@@ -86,30 +93,26 @@ export function DayView({
     return maskNameUtil(fullname, isAuthenticated())
   }
 
+  // Kullanıcı için günün tamamen kapalı olup olmadığını kontrol eder
+  const isUserDayClosed = (userId: number): boolean => {
+    const workingHours = timeSlots.map(slot => slot.formattedTime);
+    return isAllDayClosed(userId, workingHours, closedSlots);
+  }
+
   // Zaman dilimi durumuna göre sınıf belirleme
   const getStatusClass = (userId: number, formattedTime: string) => {
-    // Randevu kontrolü - sadece saat formatıyla karşılaştır
-    const appointment = appointments.find(a => {
-      if (a.userId !== userId) return false;
-      
-      const appTime = formatTimeFromDate(a.date);
-      return appTime === formattedTime;
-    });
+    // Randevu kontrolü
+    const appointment = findAppointment(userId, formattedTime, appointments);
     
-    // Kapalı slot kontrolü - sadece saat formatıyla karşılaştır
-    const slotClosed = closedSlots.some(c => {
-      if (c.userId !== userId) return false;
-      
-      const closedTime = formatTimeFromDate(c.date);
-      return closedTime === formattedTime;
-    });
+    // Kapalı slot kontrolü
+    const slotClosed = isTimeSlotClosed(userId, formattedTime, closedSlots);
 
     if (slotClosed) {
-      return "bg-red-100 text-red-700 border-red-200 hover:bg-red-200 md:hover:bg-red-200"
+      return "bg-red-100 text-red-700 border-red-200 hover:bg-red-200 md:hover:bg-red-200";
     } else if (appointment) {
-      return "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 md:hover:bg-blue-200"
+      return "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 md:hover:bg-blue-200";
     } else {
-      return "bg-green-100 text-green-700 border-green-200 hover:bg-green-200 md:hover:bg-green-200"
+      return "bg-green-100 text-green-700 border-green-200 hover:bg-green-200 md:hover:bg-green-200";
     }
   }
 
@@ -132,17 +135,11 @@ export function DayView({
 
   // Modal açma fonksiyonu
   const openSlotModal = (userId: number, slotTime: Date, formattedTime: string) => {
-    // Randevu bulma - aynı saat diliminde olan
-    const appointment = appointments.find(a => {
-      if (a.userId !== userId) return false;
-      return formatTimeFromDate(a.date) === formattedTime;
-    });
+    // Randevu bulma
+    const appointment = findAppointment(userId, formattedTime, appointments);
     
     // Kapalı slot kontrolü
-    const isSlotClosed = closedSlots.some(c => {
-      if (c.userId !== userId) return false;
-      return formatTimeFromDate(c.date) === formattedTime;
-    });
+    const isSlotClosed = isTimeSlotClosed(userId, formattedTime, closedSlots);
     
     setSelectedSlotInfo({
       isOpen: true,
@@ -157,42 +154,6 @@ export function DayView({
   // Modal kapatma fonksiyonu
   const closeSlotModal = () => {
     setSelectedSlotInfo(prev => ({...prev, isOpen: false}))
-  }
-
-  // Kullanıcı için günün tamamen kapalı olup olmadığını kontrol eder
-  const isUserDayClosed = (userId: number): boolean => {
-    if (closedSlots.length === 0) return false;
-    
-    // WORKING_SLOTS değerlerini kullan (generateTimeSlots zaten bunları kullanıyor)
-    // Çalışma saatleri, her saat için kontrol et
-    const workingHours = timeSlots.map(slot => slot.formattedTime);
-    
-    // Kontrol edilen slot sayısı
-    console.log(`Kontrol edilecek slot sayısı: ${workingHours.length}`);
-    console.log(`Mevcut kapalı slot sayısı: ${closedSlots.length}`);
-    
-    // Kullanıcıya ait kapalı slotlar
-    const userClosedSlots = closedSlots.filter(slot => slot.userId === userId);
-    console.log(`Kullanıcıya (${userId}) ait kapalı slot sayısı: ${userClosedSlots.length}`);
-    
-    // Kullanıcının kapalı slot saatleri
-    const closedHours = userClosedSlots.map(slot => formatTimeFromDate(slot.date));
-    console.log(`Kapalı saatler: ${closedHours.join(', ')}`);
-    
-    // Tüm zaman dilimleri kapalı mı kontrol et
-    const allSlotsClosed = workingHours.every(hour => {
-      const isThisSlotClosed = closedHours.includes(hour);
-      
-      // Debug için log bırakalım
-      if (!isThisSlotClosed) {
-        console.log(`Açık kalan zaman dilimi: ${hour}`);
-      }
-      
-      return isThisSlotClosed;
-    });
-    
-    console.log(`Tüm slotlar kapalı mı? ${allSlotsClosed ? 'Evet' : 'Hayır'}`);
-    return allSlotsClosed;
   }
 
   if (isLoading) {
@@ -309,17 +270,8 @@ export function DayView({
             {timeSlots.map((slot, index) => (
               <div key={index} className="grid grid-cols-2 md:grid-cols-2 py-1 md:py-2">
                 {users.map(user => {
-                  const appointment = appointments.find(a => 
-                    a.userId === user.id && format(new Date(a.date), "HH:mm") === slot.formattedTime
-                  )
-                  
-                  const isSlotClosed = closedSlots.some(c => {
-                    if (c.userId !== user.id) return false;
-                    
-                    // Tarih kontrolü yaparken sağlam bir format kullanarak karşılaştır
-                    const closedSlotTime = format(new Date(c.date), "HH:mm");
-                    return closedSlotTime === slot.formattedTime;
-                  })
+                  const appointment = findAppointment(user.id, slot.formattedTime, appointments);
+                  const isSlotClosed = isTimeSlotClosed(user.id, slot.formattedTime, closedSlots);
                   
                   const handleClick = () => {
                     openSlotModal(user.id, slot.time, slot.formattedTime)
@@ -355,20 +307,10 @@ export function DayView({
                                   </span>
                                 </div>
                                 {/* Kapatma nedeni gösterimi */}
-                                {closedSlots.find(c => {
-                                  if (c.userId !== user.id) return false;
-                                  // Tarih kontrolü yaparken sağlam bir format kullanarak karşılaştır
-                                  const closedSlotTime = format(new Date(c.date), "HH:mm");
-                                  return closedSlotTime === slot.formattedTime;
-                                })?.reason && (
+                                {getClosedSlotReason(user.id, slot.formattedTime, closedSlots) && (
                                   <div className="mt-1">
                                     <span className="text-[10px] md:text-xs text-red-600 italic line-clamp-2">
-                                      {closedSlots.find(c => {
-                                        if (c.userId !== user.id) return false;
-                                        // Tarih kontrolü yaparken sağlam bir format kullanarak karşılaştır
-                                        const closedSlotTime = format(new Date(c.date), "HH:mm");
-                                        return closedSlotTime === slot.formattedTime;
-                                      })?.reason}
+                                      {getClosedSlotReason(user.id, slot.formattedTime, closedSlots)}
                                     </span>
                                   </div>
                                 )}

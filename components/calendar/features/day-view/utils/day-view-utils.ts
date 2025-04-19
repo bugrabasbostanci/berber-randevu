@@ -65,8 +65,12 @@ export const isSlotClosed = (
   return closedSlots.some(closedSlot => {
     if (closedSlot.userId !== userId) return false;
     
-    // Karşılaştırma için sadece saat:dakika formatını kullan
-    const slotTime = formatTimeFromDate(closedSlot.date);
+    // Tarih kontrolü için güvenli bir şekilde saat formatını elde et
+    // closedSlot.date string veya Date olabilir
+    const slotTime = formatTimeFromDate(
+      typeof closedSlot.date === 'string' ? new Date(closedSlot.date) : closedSlot.date
+    );
+    
     return slotTime === formattedTime;
   });
 }
@@ -80,8 +84,12 @@ export const findAppointmentForSlot = (
   return appointments.find(app => {
     if (app.userId !== userId) return false;
     
-    // Karşılaştırma için sadece saat:dakika formatını kullan
-    const appTime = formatTimeFromDate(app.date);
+    // Tarih kontrolü için güvenli bir şekilde saat formatını elde et
+    // app.date string veya Date olabilir
+    const appTime = formatTimeFromDate(
+      typeof app.date === 'string' ? new Date(app.date) : app.date
+    );
+    
     return appTime === formattedTime;
   });
 }
@@ -95,8 +103,12 @@ export const findClosedSlotReason = (
   const matchingSlot = closedSlots.find(closedSlot => {
     if (closedSlot.userId !== userId) return false;
     
-    // Karşılaştırma için sadece saat:dakika formatını kullan
-    const slotTime = formatTimeFromDate(closedSlot.date);
+    // Tarih kontrolü için güvenli bir şekilde saat formatını elde et
+    // closedSlot.date string veya Date olabilir
+    const slotTime = formatTimeFromDate(
+      typeof closedSlot.date === 'string' ? new Date(closedSlot.date) : closedSlot.date
+    );
+    
     return slotTime === formattedTime;
   });
   
