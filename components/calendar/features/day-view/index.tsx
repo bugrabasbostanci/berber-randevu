@@ -18,7 +18,8 @@ import {
   findAppointment, 
   isTimeSlotClosed, 
   getClosedSlotReason,
-  isDayClosed as isAllDayClosed
+  isDayClosed as isAllDayClosed,
+  getTimeString
 } from "./utils/slot-helpers";
 
 interface DayViewProps {
@@ -39,7 +40,22 @@ export function DayView({
   isLoading = false
 }: DayViewProps) {
   const { isAuthenticated } = useAuth()
-  const timeSlots = generateTimeSlots(date)
+  
+  // Normalize edilmiş tarih oluştur (UTC)
+  const normalizedDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(), 
+    12, // Zaman dilimi farklarını önlemek için günün ortasında bir saat kullan
+    0,
+    0,
+    0
+  );
+  
+  console.log(`Takvim tarihi: ${date.toISOString()}, Normalize: ${normalizedDate.toISOString()}`);
+  
+  // UTC zamanını koruyarak zaman dilimlerini oluştur
+  const timeSlots = generateTimeSlots(normalizedDate)
   const [selectedSlotInfo, setSelectedSlotInfo] = useState<{
     isOpen: boolean,
     appointment?: Appointment,
@@ -105,19 +121,34 @@ export function DayView({
     console.log(`${userId} numaralı kullanıcı için ${userClosedSlotsCount} adet kapalı slot var.`);
     console.log(`Toplam çalışma saati: ${workingHours.length}`);
     
-    // Kapalı saatleri bir diziye al
+    if (userClosedSlotsCount === 0) {
+      return false;
+    }
+    
+    // Kapalı saatleri bir diziye al (UTC zamanını kullanarak)
     const closedHours = userClosedSlots.map(slot => {
-      // closedSlot.date string veya Date olabilir
-      const date = typeof slot.date === 'string' ? new Date(slot.date) : slot.date;
-      return format(date, "HH:mm");
+      return typeof slot.date === 'string' 
+        ? getTimeString(new Date(slot.date)) 
+        : getTimeString(slot.date);
     });
     
-    console.log(`${userId} numaralı kullanıcı için kapalı saatler: ${closedHours.join(', ')}`);
+    console.log(`${userId} numaralı kullanıcı için kapalı saatler (UTC): ${closedHours.join(', ')}`);
+    console.log(`Çalışma saatleri (UTC): ${workingHours.join(', ')}`);
     
-    // Kapalı slot sayısı, toplam slot sayısına eşitse, tüm gün kapalıdır
-    if (userClosedSlotsCount >= workingHours.length) {
-      console.log(`${userId} numaralı kullanıcı için tüm gün kapalı (sayı kontrolü)`);
-      return true;
+    // Saatleri karşılaştırmak için setler kullanarak hızlı arama yapalım
+    const closedHoursSet = new Set(closedHours);
+    const workingHoursSet = new Set(workingHours);
+    
+    // Kapalı saatlerin sayısı toplam çalışma saatleriyle aynı mı?
+    if (closedHoursSet.size >= workingHoursSet.size) {
+      // Her bir çalışma saatinin kapalı olup olmadığını kontrol et
+      const allTimesAreClosed = Array.from(workingHoursSet).every(hour => closedHoursSet.has(hour));
+      
+      console.log(`${userId} numaralı kullanıcı için tüm saatler kapalı mı: ${allTimesAreClosed ? 'EVET' : 'HAYIR'}`);
+      
+      if (allTimesAreClosed) {
+        return true;
+      }
     }
     
     // Daha detaylı kontrol için yardımcı fonksiyonu kullan

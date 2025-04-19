@@ -32,15 +32,28 @@ export const WORKING_HOURS = {
 export const generateTimeSlots = (date: Date) => {
   const slots = []
   
-  // Sabit zaman dilimlerini kullan
+  // Sabit zaman dilimlerini kullan ve UTC zamanını koru
   for (const slot of WORKING_SLOTS) {
-    const slotDate = new Date(date)
-    slotDate.setHours(slot.hour, slot.minute, 0, 0)
+    // UTC tarih oluştur
+    const slotDate = new Date(Date.UTC(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      slot.hour,
+      slot.minute,
+      0,
+      0
+    ));
+    
+    // UTC formatında saat al
+    const utcTime = formatTimeFromDate(slotDate);
+    
+    console.log(`generateTimeSlots - Slot oluşturuldu: ${slot.hour}:${slot.minute} -> ${slotDate.toISOString()} -> ${utcTime}`);
     
     slots.push({
       time: slotDate,
-      formattedTime: formatTimeFromDate(slotDate)
-    })
+      formattedTime: utcTime
+    });
   }
   
   return slots

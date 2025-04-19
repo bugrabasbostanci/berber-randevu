@@ -48,11 +48,21 @@ export const findAppointment = (
   time: string, 
   appointments: Appointment[]
 ): Appointment | undefined => {
-  // Daha açık bir yaklaşımla eşleştirme yapar
+  // UTC zamanını kullanarak randevu ara
   return appointments.find(app => {
     if (app.userId !== userId) return false;
-    const appTime = getTimeString(app.date);
-    return appTime === time;
+    
+    // app.date'i getTimeString ile UTC olarak formatla
+    const appTime = typeof app.date === 'string' 
+      ? getTimeString(new Date(app.date)) 
+      : getTimeString(app.date);
+    
+    const isMatch = appTime === time;
+    if (isMatch) {
+      console.log(`Randevu bulundu - Saat: ${appTime}, Aranan: ${time}`);
+    }
+    
+    return isMatch;
   });
 };
 
