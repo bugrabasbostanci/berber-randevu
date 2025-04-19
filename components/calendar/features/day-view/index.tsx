@@ -14,9 +14,7 @@ import { ChevronLeft, User, Phone, Clock, Calendar, Pencil, Trash2, Lock, Plus }
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { SkeletonLoader } from "../../shared/skeleton-loader"
-import {  formatTimeFromDate } from "@/lib/utils"
 import { 
-  getTimeString, 
   findAppointment, 
   isTimeSlotClosed, 
   getClosedSlotReason,

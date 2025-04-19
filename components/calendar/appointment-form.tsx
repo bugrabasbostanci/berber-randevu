@@ -11,12 +11,9 @@ import { toast } from "sonner"
 import { Loader } from "@/components/ui/loader"
 import { useCalendarContext } from "./shared/context/calendar-context"
 import { 
-  formatDate, 
   safeParseDate, 
-  DATE_FORMAT, 
   toISODateString, 
-  formatTimeFromDate,
-  isSameTime 
+  formatTimeFromDate, 
 } from "@/lib/utils"
 
 interface AppointmentFormProps {
