@@ -10,20 +10,45 @@ export const ClosedSlotService = {
   async getClosedSlots(date: Date) {
     try {
       console.log("Kapalı slotları getirme isteği yapılıyor...");
-      const response = await fetch(`/api/appointments/closed-slots?date=${date.toISOString()}`, {
+      
+      // Zaman dilimi sorunlarını önlemek için tarih normalleştirme
+      const normalizedDate = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+        12, // Gün ortasında bir saat kullanarak zaman dilimi sorunlarını minimize et
+        0,
+        0,
+        0
+      );
+      
+      console.log(`Normalize edilmiş tarih: ${normalizedDate.toISOString()}`);
+      
+      // Önbellek parametreleri ile isteği gönder
+      const response = await fetch(`/api/appointments/closed-slots?date=${normalizedDate.toISOString()}`, {
+        method: 'GET',
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       });
       
       if (!response.ok) {
+        console.error(`Kapalı slotlar getirilemedi. Status: ${response.status}, Text: ${response.statusText}`);
         throw new Error(`Kapalı slotlar getirilemedi. Status: ${response.status}`);
       }
       
       const data = await response.json();
       console.log(`${data.length} kapalı slot alındı.`);
+      
+      if (data.length > 0) {
+        // İlk üç slotu örnek olarak göster
+        const sampleSlots = data.slice(0, 3);
+        console.log('Örnek kapalı slotlar:', sampleSlots);
+      }
+      
       return data;
     } catch (error) {
       console.error("Kapatılan zaman dilimleri getirilirken hata oluştu:", error);

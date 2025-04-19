@@ -151,9 +151,28 @@ export async function POST(request: Request) {
       data: newClosedSlots
     })
     
+    console.log(`Veritabanına ${closedSlots.count} adet kapalı slot başarıyla eklendi.`)
+    
+    // İşlem sonrası, veritabanında bu gün için bu kullanıcıya ait tüm kapalı slotları kontrol et
+    const currentClosedSlots = await prisma.closedSlot.findMany({
+      where: {
+        userId,
+        date: {
+          gte: dayStart,
+          lte: dayEnd
+        }
+      },
+      select: {
+        date: true
+      }
+    })
+    
+    console.log(`İşlem sonrası veritabanında ${currentClosedSlots.length} adet slot bulunuyor.`)
+    
     return NextResponse.json({
       message: `${newClosedSlots.length} zaman dilimi kapatıldı`,
-      closedCount: closedSlots.count
+      closedCount: closedSlots.count,
+      totalClosedCount: currentClosedSlots.length
     })
   } catch (error) {
     console.error("Gün kapatılırken hata oluştu:", error)

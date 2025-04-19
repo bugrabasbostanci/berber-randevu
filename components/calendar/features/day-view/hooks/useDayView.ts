@@ -26,8 +26,44 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
 
   // Kapalı slotları getiren fonksiyon
   const fetchClosedSlots = useCallback(async () => {
-    const slots = await ClosedSlotService.getClosedSlots(date);
-    setClosedSlots(slots);
+    try {
+      console.log("Kapalı slotları getirme isteği yapılıyor...");
+      console.log("Kullanılan tarih:", date.toISOString());
+      
+      // Sadece tarih bilgisini içeren yeni bir tarih oluşturalım (zaman dilimi sorunlarını önlemek için)
+      const normalizedDate = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+        12, // Ortada bir saat kullanarak zaman dilimi sorunlarını minimize edelim
+        0,
+        0,
+        0
+      );
+      
+      console.log("Normalize edilmiş tarih:", normalizedDate.toISOString());
+      
+      const response = await fetch(`/api/appointments/closed-slots?date=${normalizedDate.toISOString()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`${data.length} kapalı slot alındı.`);
+        if (data.length > 0) {
+          console.log("Alınan kapalı slotlar:", data);
+        }
+        setClosedSlots(data);
+      } else {
+        console.error("Kapalı slotları getirme isteği başarısız:", response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error("Kapatılan zaman dilimleri getirilirken hata oluştu:", error);
+    }
   }, [date]);
 
   // Komponent mount olduğunda ve date değiştiğinde kapalı slotları getir
@@ -121,20 +157,31 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
   const confirmCloseDay = async () => {
     if (!dayToClose) return;
 
-    const success = await ClosedSlotService.closeDay(
-      dayToClose.userId,
-      dayToClose.date,
-      closeDayReason
-    );
-    
-    if (success) {
-      await fetchClosedSlots();
-      onRefresh();
+    try {
+      const success = await ClosedSlotService.closeDay(
+        dayToClose.userId,
+        dayToClose.date,
+        closeDayReason
+      );
+      
+      if (success) {
+        console.log("Gün kapatma başarılı, kapalı slotlar yeniden getiriliyor...");
+        
+        // Veritabanı işlemlerinin tamamlanması için kısa bir bekleme süresi ekleyelim
+        // Bu, race condition'ları önleyecektir
+        setTimeout(async () => {
+          await fetchClosedSlots();
+          onRefresh();
+        }, 500);
+      }
+    } catch (error) {
+      console.error("Gün kapatma işlemi sırasında hata:", error);
+      toast.error("Gün kapatma işlemi sırasında bir hata oluştu");
+    } finally {
+      setCloseDayDialogOpen(false);
+      setDayToClose(null);
+      setCloseDayReason('');
     }
-    
-    setCloseDayDialogOpen(false);
-    setDayToClose(null);
-    setCloseDayReason('');
   };
 
   // Zaman dilimi açma
