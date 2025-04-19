@@ -104,7 +104,14 @@ export function formatTimeFromDate(date: Date | string): string {
   
   try {
     const dateObj = typeof date === "string" ? new Date(date) : date;
-    return format(dateObj, DATE_FORMAT.ISO_TIME, { locale: tr });
+    
+    // UTC zamanını kullanarak saat ve dakikayı al
+    const hours = dateObj.getUTCHours().toString().padStart(2, '0');
+    const minutes = dateObj.getUTCMinutes().toString().padStart(2, '0');
+    
+    console.log(`formatTimeFromDate - Orijinal tarih: ${dateObj.toISOString()}, UTC saat: ${hours}:${minutes}`);
+    
+    return `${hours}:${minutes}`;
   } catch (error) {
     console.error("Saat formatlanırken hata:", error);
     return "";

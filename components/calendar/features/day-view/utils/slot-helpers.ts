@@ -5,10 +5,24 @@ import { Appointment, ClosedSlot } from "@/types";
  * Bir tarihin saat formatını döndürür
  */
 export const getTimeString = (date: Date | string): string => {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  // Debug bilgisi
-  console.log(`getTimeString - Original date: ${typeof date === 'string' ? date : date.toISOString()}, Converted: ${format(dateObj, "HH:mm")}`);
-  return format(dateObj, "HH:mm");
+  try {
+    // Date nesnesine çevir
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    
+    // Debug bilgisi
+    console.log(`getTimeString - Original date: ${typeof date === 'string' ? date : date.toISOString()}`);
+    
+    // Saati ve dakikayı doğrudan al, zaman dilimini dikkate almadan
+    const hours = dateObj.getUTCHours().toString().padStart(2, '0');
+    const minutes = dateObj.getUTCMinutes().toString().padStart(2, '0');
+    const timeString = `${hours}:${minutes}`;
+    
+    console.log(`getTimeString - UTC saat: ${timeString}`);
+    return timeString;
+  } catch (error) {
+    console.error('getTimeString - Tarih işleme hatası:', error, 'Tarih:', date);
+    return '00:00'; // Hata durumunda varsayılan değer
+  }
 };
 
 /**
@@ -57,18 +71,18 @@ export const isTimeSlotClosed = (
   if (userSlots.length > 0) {
     console.log(`User ${userId} has ${userSlots.length} closed slots`);
     
-    // Tüm kapalı slotların saatlerini göster
-    userSlots.forEach(slot => {
+    // Kapalı slotların saatlerini göster (UTC zamanını kullanarak)
+    const closedTimes = userSlots.map(slot => {
       const slotTime = getTimeString(slot.date);
       console.log(`Kapalı slot: ${slotTime}, karşılaştırma: ${time}, eşleşme: ${slotTime === time}`);
+      return slotTime;
     });
+    
+    // Kontrol edilen zaman bu kullanıcının kapalı slotlarında var mı?
+    return closedTimes.includes(time);
   }
   
-  return closedSlots.some(slot => {
-    if (slot.userId !== userId) return false;
-    const slotTime = getTimeString(slot.date);
-    return slotTime === time;
-  });
+  return false;
 };
 
 /**

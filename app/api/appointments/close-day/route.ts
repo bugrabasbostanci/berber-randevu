@@ -60,9 +60,9 @@ export async function POST(request: Request) {
     const newClosedSlots = []
     
     for (const slot of WORKING_SLOTS) {
-      // Slot için tarih oluştur - önemli: Saat dilimi sorunlarından kaçınmak için
-      // tarih nesnesi oluşturulurken değerleri açıkça belirtiyoruz
-      const slotDate = new Date(
+      // Slot için tarih oluştur - Zaman dilimi sorunlarına dikkat et
+      // UTC zamanını koruyarak slot tarihi oluştur
+      const slotDate = new Date(Date.UTC(
         dayStart.getFullYear(),
         dayStart.getMonth(),
         dayStart.getDate(),
@@ -70,13 +70,15 @@ export async function POST(request: Request) {
         slot.minute,
         0,
         0
-      )
+      ));
       
-      // Saat formatını al
-      const slotTime = formatDate(slotDate, "HH:mm")
+      // Saat formatını al (UTC olarak)
+      const slotTime = formatDate(slotDate, "HH:mm");
       
-      // Daha fazla debug bilgisi
-      console.log(`Kontrol edilen slot: ${slotTime}, Tarih: ${slotDate.toISOString()}, Kapalı mı: ${existingClosedHours.has(slotTime)}`)
+      // Daha detaylı debug bilgisi ekle
+      console.log(`Kontrol edilen slot: ${slotTime}, Tarih (ISO): ${slotDate.toISOString()}, Tarih (Local): ${slotDate.toString()}`);
+      console.log(`UTC: Saat=${slotDate.getUTCHours()}, Dakika=${slotDate.getUTCMinutes()}`);
+      console.log(`Yerel: Saat=${slotDate.getHours()}, Dakika=${slotDate.getMinutes()}`);
       
       // Eğer bu saat zaten kapalı değilse, kapatılacaklar listesine ekle
       if (!existingClosedHours.has(slotTime)) {
@@ -86,7 +88,7 @@ export async function POST(request: Request) {
           reason: reason || 'Berber/Çalışan tarafından kapatıldı',
           createdAt: new Date(),
           updatedAt: new Date()
-        })
+        });
       }
     }
     
@@ -112,7 +114,7 @@ export async function POST(request: Request) {
         
         // Tüm slotları yeniden oluştur
         const allSlots = WORKING_SLOTS.map(slot => {
-          const slotDate = new Date(
+          const slotDate = new Date(Date.UTC(
             dayStart.getFullYear(),
             dayStart.getMonth(),
             dayStart.getDate(),
@@ -120,7 +122,9 @@ export async function POST(request: Request) {
             slot.minute,
             0,
             0
-          )
+          ));
+          
+          console.log(`Yeniden oluşturulan slot: Saat=${slot.hour}:${slot.minute}, UTC Tarih=${slotDate.toISOString()}`);
           
           return {
             userId,
@@ -128,8 +132,8 @@ export async function POST(request: Request) {
             reason: reason || 'Berber/Çalışan tarafından kapatıldı',
             createdAt: new Date(),
             updatedAt: new Date()
-          }
-        })
+          };
+        });
         
         const createdSlots = await prisma.closedSlot.createMany({
           data: allSlots
