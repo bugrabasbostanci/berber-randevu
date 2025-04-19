@@ -39,12 +39,12 @@ export function DayView({
 }: DayViewProps) {
   const { isAuthenticated } = useAuth()
   
-  // Normalize edilmiş tarih oluştur (UTC)
+  // Normalize edilmiş tarih oluştur (yerel zaman)
   const normalizedDate = new Date(
     date.getFullYear(),
     date.getMonth(),
     date.getDate(), 
-    12, // Zaman dilimi farklarını önlemek için günün ortasında bir saat kullan
+    12, // Gün ortası saat
     0,
     0,
     0
@@ -52,7 +52,7 @@ export function DayView({
   
   console.log(`Takvim tarihi: ${date.toISOString()}, Normalize: ${normalizedDate.toISOString()}`);
   
-  // UTC zamanını koruyarak zaman dilimlerini oluştur
+  // Yerel zaman kullanarak zaman dilimlerini oluştur
   const timeSlots = generateTimeSlots(normalizedDate)
   const [selectedSlotInfo, setSelectedSlotInfo] = useState<{
     isOpen: boolean,
@@ -129,8 +129,8 @@ export function DayView({
       // Kapalı saatleri yerel formatta al
       const closedHours = userClosedSlots.map(slot => {
         const date = typeof slot.date === 'string' ? new Date(slot.date) : slot.date;
-        const hours = date.getUTCHours();
-        const minutes = date.getUTCMinutes();
+        const hours = date.getHours();
+        const minutes = date.getMinutes();
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
       });
       

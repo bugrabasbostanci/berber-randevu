@@ -20,6 +20,8 @@ export async function GET(request: Request) {
     const inputDate = safeParseDate(date)
     const targetTime = formatDate(inputDate, DATE_FORMAT.ISO_TIME)
     
+    console.log(`Gelen tarih: ${date}, Parse edilmiş tarih: ${inputDate.toISOString()}, Hedef saat: ${targetTime}`)
+    
     // Günün başlangıç ve bitişini belirle
     const dayStart = startOfDay(inputDate)
     const dayEnd = endOfDay(inputDate)
@@ -35,10 +37,14 @@ export async function GET(request: Request) {
       }
     })
 
+    console.log(`Bulunan kapalı slot sayısı: ${closedSlots.length}`)
+
     // Saati eşleşen slotu bul
     const isClosed = closedSlots.some(slot => {
       const slotTime = formatDate(slot.date, DATE_FORMAT.ISO_TIME)
-      return slotTime === targetTime
+      const isMatch = slotTime === targetTime
+      console.log(`Kapalı slot: ${slotTime}, karşılaştırma: ${targetTime}, eşleşme: ${isMatch ? 'EVET' : 'HAYIR'}`)
+      return isMatch
     })
 
     return NextResponse.json({ isClosed })

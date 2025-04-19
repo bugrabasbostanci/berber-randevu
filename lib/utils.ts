@@ -105,13 +105,20 @@ export function formatTimeFromDate(date: Date | string): string {
   try {
     const dateObj = typeof date === "string" ? new Date(date) : date;
     
-    // UTC zamanını kullanarak saat ve dakikayı al
-    const hours = dateObj.getUTCHours().toString().padStart(2, '0');
-    const minutes = dateObj.getUTCMinutes().toString().padStart(2, '0');
+    // UTC ve yerel tarih bilgilerini yazdıralım
+    console.log(`formatTimeFromDate - Input date: ${typeof date === 'string' ? date : date.toISOString()}`);
+    console.log(`formatTimeFromDate - Parsed date: ${dateObj.toISOString()}`);
+    console.log(`formatTimeFromDate - Local: ${dateObj.toString()}`);
+    console.log(`formatTimeFromDate - UTC Hour: ${dateObj.getUTCHours()}, Minute: ${dateObj.getUTCMinutes()}`);
     
-    console.log(`formatTimeFromDate - Orijinal tarih: ${dateObj.toISOString()}, UTC saat: ${hours}:${minutes}`);
+    // Yerel saati kullanarak saat ve dakikayı al
+    const hours = dateObj.getHours().toString().padStart(2, '0');
+    const minutes = dateObj.getMinutes().toString().padStart(2, '0');
     
-    return `${hours}:${minutes}`;
+    const result = `${hours}:${minutes}`;
+    console.log(`formatTimeFromDate - Yerel saat: ${result}`);
+    
+    return result;
   } catch (error) {
     console.error("Saat formatlanırken hata:", error);
     return "";

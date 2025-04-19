@@ -61,6 +61,23 @@ export const ClosedSlotService = {
    */
   async closeSlot(userId: number, date: Date, reason: string) {
     try {
+      // Saat dilimi sorunlarını önlemek için gelen tarihi normalize et
+      const normalizedDate = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+        date.getHours(),
+        date.getMinutes(),
+        0,
+        0
+      );
+      
+      console.log(`Zaman dilimi kapatma isteği gönderiliyor:`, {
+        userId,
+        date: normalizedDate.toISOString(),
+        saat: `${normalizedDate.getHours()}:${normalizedDate.getMinutes()}`
+      });
+      
       const response = await fetch('/api/appointments/close-slot', {
         method: 'POST',
         headers: {
@@ -68,7 +85,7 @@ export const ClosedSlotService = {
         },
         body: JSON.stringify({
           userId,
-          date,
+          date: normalizedDate,
           reason: reason || 'Berber/Çalışan tarafından kapatıldı'
         })
       });

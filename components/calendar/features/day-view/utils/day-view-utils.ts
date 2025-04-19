@@ -24,7 +24,7 @@ export const WORKING_SLOTS = [
 // Geriye dönük uyumluluk için eski WORKING_HOURS nesnesini koruyalım
 export const WORKING_HOURS = {
   start: 9.5, // 09:30
-  end: 21,    // 21:00
+  end: 20.75,    // 20:45
   interval: 0.75 // 45 dakika
 }
 
@@ -45,24 +45,13 @@ export const generateTimeSlots = (date: Date) => {
       0
     );
     
-    // UTC formatından yerel saate çevirirken 3 saat ekleyelim (Türkiye UTC+3)
-    const utcSlotDate = new Date(Date.UTC(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      slot.hour,
-      slot.minute,
-      0,
-      0
-    ));
-    
     // Formatlanmış saati al
     const formattedTime = `${slot.hour.toString().padStart(2, '0')}:${slot.minute.toString().padStart(2, '0')}`;
     
-    console.log(`generateTimeSlots - Slot: ${formattedTime}, UTC: ${utcSlotDate.toISOString()}, Local: ${slotDate.toString()}`);
+    console.log(`generateTimeSlots - Slot: ${formattedTime}, Yerel: ${slotDate.toString()}`);
     
     slots.push({
-      time: utcSlotDate, // UTC zaman kaydedelim (backend için)
+      time: slotDate, // Yerel zaman kaydedelim
       formattedTime: formattedTime // Yerel zaman gösterelim (UI için)
     });
   }

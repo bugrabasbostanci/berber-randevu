@@ -27,10 +27,10 @@ interface AppointmentFormProps {
   selectedTime?: string
 }
 
-// Çalışma saatleri: 09:30 - 21:00, 45 dakikalık aralıklarla
+// Çalışma saatleri: 09:30 - 20:45, 45 dakikalık aralıklarla
 const WORKING_HOURS = {
   start: 9.5, // 09:30
-  end: 21,    // 21:00
+  end: 20.75,    // 20:45
   interval: 0.75 // 45 dakika
 }
 

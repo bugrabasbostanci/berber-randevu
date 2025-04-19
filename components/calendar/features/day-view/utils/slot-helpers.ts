@@ -18,12 +18,12 @@ export const getTimeString = (date: Date | string): string => {
     // Debug bilgisi
     console.log(`getTimeString - Original date: ${typeof date === 'string' ? date : date.toISOString()}`);
     
-    // Saati ve dakikayı doğrudan al, zaman dilimini dikkate almadan
-    const hours = dateObj.getUTCHours().toString().padStart(2, '0');
-    const minutes = dateObj.getUTCMinutes().toString().padStart(2, '0');
+    // Saati ve dakikayı yerel saat diliminde al
+    const hours = dateObj.getHours().toString().padStart(2, '0');
+    const minutes = dateObj.getMinutes().toString().padStart(2, '0');
     const timeString = `${hours}:${minutes}`;
     
-    console.log(`getTimeString - UTC saat: ${timeString}`);
+    console.log(`getTimeString - Yerel saat: ${timeString}`);
     return timeString;
   } catch (error) {
     console.error('getTimeString - Tarih işleme hatası:', error, 'Tarih:', date);
@@ -62,9 +62,9 @@ export const findAppointment = (
     // Randevu tarihini al
     const date = typeof app.date === 'string' ? new Date(app.date) : app.date;
     
-    // UTC saat ve dakikayı al
-    const hours = date.getUTCHours();
-    const minutes = date.getUTCMinutes();
+    // Yerel saat ve dakikayı al
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
     
     // Formatlanmış saati oluştur
     const appTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
@@ -96,15 +96,20 @@ export const isTimeSlotClosed = (
     for (const slot of userSlots) {
       const date = typeof slot.date === 'string' ? new Date(slot.date) : slot.date;
       
-      // UTC saat ve dakikayı al
-      const utcHours = date.getUTCHours();
-      const utcMinutes = date.getUTCMinutes();
+      // Yerel saat ve dakikayı al
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
       
       // Formatlanmış saati oluştur
-      const slotTime = `${utcHours.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}`;
+      const slotTime = `${hours}:${minutes}`;
       
-      const isMatch = slotTime === time;
-      console.log(`Kapalı slot UTC: ${slotTime}, karşılaştırma: ${time}, eşleşme: ${isMatch ? 'EVET' : 'HAYIR'}`);
+      // Saat dilimlerinde yarım saatte bir karşılaştırma yapılıyor,
+      // bu nedenle saatleri normalize edelim
+      const normalizedTime = normalizeTime(time);
+      const normalizedSlotTime = normalizeTime(slotTime);
+      
+      const isMatch = normalizedSlotTime === normalizedTime;
+      console.log(`Kapalı slot: ${slotTime} (normalized: ${normalizedSlotTime}), karşılaştırma: ${time} (normalized: ${normalizedTime}), eşleşme: ${isMatch ? 'EVET' : 'HAYIR'}`);
       
       if (isMatch) {
         return true;
@@ -113,6 +118,35 @@ export const isTimeSlotClosed = (
   }
   
   return false;
+};
+
+/**
+ * Saatleri normalize eder - tarih karşılaştırması için
+ */
+const normalizeTime = (time: string): string => {
+  try {
+    // Zaman formatını doğrula
+    if (!time || !time.includes(':')) {
+      console.error('normalizeTime - Geçersiz zaman formatı:', time);
+      return time;
+    }
+    
+    const [hourStr, minuteStr] = time.split(':');
+    const hour = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr, 10);
+    
+    // Zaman dilimi doğrulama
+    if (isNaN(hour) || isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+      console.error('normalizeTime - Geçersiz saat veya dakika:', hourStr, minuteStr);
+      return time;
+    }
+    
+    // Sadece saat:dakika formatına çevir, normalizasyon yok (gelecekte gerekli olursa burada saat düzeltmesi yapılabilir)
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+  } catch (error) {
+    console.error('normalizeTime - Hata:', error);
+    return time;
+  }
 };
 
 /**
