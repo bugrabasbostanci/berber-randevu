@@ -161,7 +161,7 @@ export function AppointmentForm({
         toast.promise(
           async () => {
             // Kapatılmış saat dilimi kontrolü
-            const checkSlotUrl = `/api/appointments/check-closed-slot?date=${formData.date}T${formData.time}&userId=${userId}`
+            const checkSlotUrl = `/api/appointments/check-closed-slot?date=${formData.date}&time=${formData.time}&userId=${userId}`
             const isSlotClosed = await fetch(checkSlotUrl)
               .then(res => res.json())
               .then(data => data.isClosed)
@@ -210,7 +210,7 @@ export function AppointmentForm({
         toast.promise(
           async () => {
             // Kapatılmış saat dilimi kontrolü
-            const checkSlotUrl = `/api/appointments/check-closed-slot?date=${formData.date}T${formData.time}&userId=${userId}`
+            const checkSlotUrl = `/api/appointments/check-closed-slot?date=${formData.date}&time=${formData.time}&userId=${userId}`
             const isSlotClosed = await fetch(checkSlotUrl)
               .then(res => res.json())
               .then(data => data.isClosed)

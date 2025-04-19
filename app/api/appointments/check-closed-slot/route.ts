@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { format, startOfDay, endOfDay, parseISO } from "date-fns"
+import { safeParseDate } from "@/lib/utils"
 
 export async function GET(request: Request) {
   try {
@@ -16,65 +16,58 @@ export async function GET(request: Request) {
       )
     }
 
-    // Tarihi parse et
-    const parsedDate = parseISO(dateParam)
+    // Tarih ve saati birleştirin veya ayrı saat parametresi kullanın
+    let targetDateTime;
     
-    // Günün başlangıç ve bitişini belirle
-    const dayStart = startOfDay(parsedDate)
-    const dayEnd = endOfDay(parsedDate)
-
-    // Eğer belirli bir saat sorgusu varsa
-    if (timeParam) {
-      // Saat bilgisini al (HH:MM formatında)
-      const [hours, minutes] = timeParam.split(":").map(Number)
-      
-      // Belirli saat için sorgu yap
-      const targetTime = new Date(
-        parsedDate.getFullYear(),
-        parsedDate.getMonth(),
-        parsedDate.getDate(),
-        hours,
-        minutes
-      )
-      
-      // Tam olarak bu saatteki kapalı slotları ara
-      const closedSlot = await prisma.closedSlot.findFirst({
-        where: {
-          userId: parseInt(userId),
-          date: {
-            gte: new Date(targetTime.getTime() - 1000 * 60), // 1 dakika tolerans
-            lte: new Date(targetTime.getTime() + 1000 * 60)  // 1 dakika tolerans
-          }
-        }
-      })
-      
-      return NextResponse.json({ 
-        isClosed: !!closedSlot,
-        reason: closedSlot?.reason || null
-      })
+    if (timeParam && !dateParam.includes("T")) {
+      // Saat bilgisi ayrı geldiyse tarih ve saati birleştir (yyyy-MM-ddTHH:mm formatında)
+      targetDateTime = safeParseDate(`${dateParam}T${timeParam}`);
+    } else {
+      // Tam tarih-saat bilgisi geldiyse direkt kullan
+      targetDateTime = safeParseDate(dateParam);
     }
     
-    // Tüm günün kapalı slotlarını getir
-    const closedSlots = await prisma.closedSlot.findMany({
+    console.log(`Kontrol edilen tarih-saat: ${targetDateTime.toISOString()}`);
+    
+    // Sorgu için saat ve dakika bilgilerini al
+    const hours = targetDateTime.getHours();
+    const minutes = targetDateTime.getMinutes();
+    
+    // Veritabanındaki ilgili tarih-saatte kapanmış slot kontrolü
+    const closedSlot = await prisma.closedSlot.findFirst({
       where: {
         userId: parseInt(userId),
         date: {
-          gte: dayStart,
-          lte: dayEnd
+          // Saat ve dakikanın tam eşleşmesini sağlayarak kontrol et
+          // Yıl-ay-gün eşleşmesini ve saat-dakika eşleşmesini sağla
+          gte: new Date(
+            targetDateTime.getFullYear(),
+            targetDateTime.getMonth(),
+            targetDateTime.getDate(),
+            hours,
+            minutes,
+            0,
+            0
+          ),
+          lte: new Date(
+            targetDateTime.getFullYear(),
+            targetDateTime.getMonth(),
+            targetDateTime.getDate(),
+            hours,
+            minutes,
+            59,
+            999
+          )
         }
       }
-    })
-
-    // Saatleri formatlayarak frontend'e gönder
-    const formattedSlots = closedSlots.map(slot => ({
-      id: slot.id,
-      userId: slot.userId,
-      time: format(slot.date, "HH:mm"),
-      reason: slot.reason || null,
-      fullDate: slot.date
-    }))
-
-    return NextResponse.json(formattedSlots)
+    });
+    
+    console.log(`Kapalı slot kontrolü sonucu: ${!!closedSlot ? "Kapalı" : "Açık"}`);
+    
+    return NextResponse.json({ 
+      isClosed: !!closedSlot,
+      reason: closedSlot?.reason || null
+    });
   } catch (error) {
     console.error("Kapatılmış saat dilimi kontrolü sırasında hata:", error)
     return NextResponse.json(
