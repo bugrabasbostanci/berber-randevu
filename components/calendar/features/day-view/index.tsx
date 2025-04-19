@@ -14,10 +14,11 @@ import { ChevronLeft, User, Phone, Clock, Calendar, Pencil, Trash2, Lock, Plus }
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { SkeletonLoader } from "../../shared/skeleton-loader"
-import { 
-  findAppointment, 
-  isTimeSlotClosed, 
+import {
+  findAppointment,
+  isTimeSlotClosed,
   getClosedSlotReason,
+  getTimeString,
 } from "./utils/slot-helpers";
 
 interface DayViewProps {
@@ -29,29 +30,29 @@ interface DayViewProps {
   isLoading?: boolean
 }
 
-export function DayView({ 
-  date, 
-  appointments, 
-  users, 
-  onBack, 
+export function DayView({
+  date,
+  appointments,
+  users,
+  onBack,
   onRefresh,
   isLoading = false
 }: DayViewProps) {
   const { isAuthenticated } = useAuth()
-  
+
   // Normalize edilmiş tarih oluştur (yerel zaman)
   const normalizedDate = new Date(
     date.getFullYear(),
     date.getMonth(),
-    date.getDate(), 
+    date.getDate(),
     12, // Gün ortası saat
     0,
     0,
     0
   );
-  
+
   console.log(`Takvim tarihi: ${date.toISOString()}, Normalize: ${normalizedDate.toISOString()}`);
-  
+
   // Yerel zaman kullanarak zaman dilimlerini oluştur
   const timeSlots = generateTimeSlots(normalizedDate)
   const [selectedSlotInfo, setSelectedSlotInfo] = useState<{
@@ -69,7 +70,7 @@ export function DayView({
     slotTime: new Date(),
     formattedTime: ''
   })
-  
+
   const {
     closedSlots,
     selectedAppointment,
@@ -109,20 +110,20 @@ export function DayView({
   const isUserDayClosed = (userId: number): boolean => {
     // Çalışma saatlerini elde et - bunlar artık yerel formatta
     const workingHours = timeSlots.map(slot => slot.formattedTime);
-    
+
     // Kullanıcıya ait kapalı slotlar
     const userClosedSlots = closedSlots.filter(slot => slot.userId === userId);
-    
+
     // Kullanıcıya ait kapalı slotların sayısını kontrol et
     const userClosedSlotsCount = userClosedSlots.length;
-    
+
     console.log(`${userId} numaralı kullanıcı için ${userClosedSlotsCount} adet kapalı slot var.`);
     console.log(`Toplam çalışma saati: ${workingHours.length}`);
-    
+
     if (userClosedSlotsCount === 0) {
       return false;
     }
-    
+
     // Eğer kapalı slot sayısı, çalışma saatleri kadar veya daha fazlaysa ve
     // her bir çalışma saati için en az bir kapalı slot varsa, tüm gün kapalıdır
     if (userClosedSlotsCount >= workingHours.length) {
@@ -133,33 +134,37 @@ export function DayView({
         const minutes = date.getMinutes();
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
       });
-      
+
       // Çalışma saatleri ve kapalı saatler için setler oluştur
       const workingHoursSet = new Set(workingHours);
       const closedHoursSet = new Set(closedHours);
-      
+
       console.log(`Çalışma saatleri: ${Array.from(workingHoursSet).join(', ')}`);
       console.log(`Kapalı saatler: ${Array.from(closedHoursSet).join(', ')}`);
-      
+
       // Her çalışma saati kapalı saatler arasında mı?
       const allClosed = Array.from(workingHoursSet).every(hour => closedHoursSet.has(hour));
-      
+
       if (allClosed) {
         console.log(`${userId} numaralı kullanıcı için tüm gün kapalı (doğrudan kontrol).`);
         return true;
       }
     }
-    
+
     return false;
   }
 
   // Zaman dilimi durumuna göre sınıf belirleme
   const getStatusClass = (userId: number, formattedTime: string) => {
+    // Eğer kapalı slotlar backend'den zaten işlenmiş olarak geliyorsa
+    // sadece eşleşme kontrolü yapılır
+    const slotClosed = closedSlots.some(
+      slot => slot.userId === userId && 
+             (slot.time === formattedTime || getTimeString(slot.date) === formattedTime)
+    );
+
     // Randevu kontrolü
     const appointment = findAppointment(userId, formattedTime, appointments);
-    
-    // Kapalı slot kontrolü
-    const slotClosed = isTimeSlotClosed(userId, formattedTime, closedSlots);
 
     if (slotClosed) {
       return "bg-red-100 text-red-700 border-red-200 hover:bg-red-200 md:hover:bg-red-200";
@@ -170,20 +175,19 @@ export function DayView({
     }
   }
 
-  
   // Telefon numarasını formatlama (5XX XXX XX XX)
   const formatPhoneNumber = (phone: string): string => {
     if (!phone) return '';
-    
+
     // Sadece rakamları al
     const numbersOnly = phone.replace(/\D/g, '');
-    
+
     // Son 10 haneyi formatla (5XX XXX XX XX)
     if (numbersOnly.length >= 10) {
       const last10 = numbersOnly.slice(-10);
       return `${last10.slice(0, 3)} ${last10.slice(3, 6)} ${last10.slice(6, 8)} ${last10.slice(8, 10)}`;
     }
-    
+
     return numbersOnly;
   };
 
@@ -191,10 +195,10 @@ export function DayView({
   const openSlotModal = (userId: number, slotTime: Date, formattedTime: string) => {
     // Randevu bulma
     const appointment = findAppointment(userId, formattedTime, appointments);
-    
+
     // Kapalı slot kontrolü
     const isSlotClosed = isTimeSlotClosed(userId, formattedTime, closedSlots);
-    
+
     setSelectedSlotInfo({
       isOpen: true,
       appointment,
@@ -207,7 +211,7 @@ export function DayView({
 
   // Modal kapatma fonksiyonu
   const closeSlotModal = () => {
-    setSelectedSlotInfo(prev => ({...prev, isOpen: false}))
+    setSelectedSlotInfo(prev => ({ ...prev, isOpen: false }))
   }
 
   if (isLoading) {
@@ -215,17 +219,17 @@ export function DayView({
       <div className="flex flex-col bg-gray-50 min-h-screen">
         <div className="bg-white border-b border-gray-200 rounded-md shadow-sm max-w-3xl md:max-w-4xl mx-auto w-full">
           <div className="flex items-center justify-between p-2 md:p-3">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="flex items-center justify-center rounded-md h-8 w-8 hover:bg-gray-100 active:bg-gray-200 border border-gray-300" 
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center justify-center rounded-md h-8 w-8 hover:bg-gray-100 active:bg-gray-200 border border-gray-300"
               onClick={onBack}
               aria-label="Takvime Dön"
             >
               <ChevronLeft className="w-4 h-4" />
               <span className="sr-only">Takvime Dön</span>
             </Button>
-            
+
             <div className="flex flex-col items-center">
               <h2 className="text-base md:text-lg font-semibold text-gray-800">
                 {format(date, "d MMMM", { locale: tr })}
@@ -234,7 +238,7 @@ export function DayView({
                 {format(date, "EEEE", { locale: tr })}
               </p>
             </div>
-            
+
             <div className="w-8"></div>
           </div>
         </div>
@@ -251,17 +255,17 @@ export function DayView({
       {/* Üst Bar - Yeni Tasarım */}
       <div className="bg-white border-b border-gray-200 rounded-md shadow-sm max-w-3xl md:max-w-4xl mx-auto w-full">
         <div className="flex items-center justify-between p-2 md:p-3">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="flex items-center justify-center rounded-md h-8 w-8 hover:bg-gray-100 active:bg-gray-200 border border-gray-300" 
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex items-center justify-center rounded-md h-8 w-8 hover:bg-gray-100 active:bg-gray-200 border border-gray-300"
             onClick={onBack}
             aria-label="Takvime Dön"
           >
             <ChevronLeft className="w-4 h-4" />
             <span className="sr-only">Takvime Dön</span>
           </Button>
-          
+
           <div className="flex flex-col items-center">
             <h2 className="text-base md:text-lg font-semibold text-gray-800">
               {format(date, "d MMMM", { locale: tr })}
@@ -270,7 +274,7 @@ export function DayView({
               {format(date, "EEEE", { locale: tr })}
             </p>
           </div>
-          
+
           <div className="w-8"></div> {/* Denge için boş alan */}
         </div>
       </div>
@@ -293,8 +297,8 @@ export function DayView({
                 {isAuthenticated() && (
                   <div className="flex gap-1">
                     {!isUserDayClosed(user.id) ? (
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         className="text-red-600 border-red-300 hover:bg-red-50 hover:text-red-700 text-xs h-7 px-2.5 rounded-md"
                         onClick={() => handleCloseDay(user.id)}
@@ -303,8 +307,8 @@ export function DayView({
                         <span>Kapat</span>
                       </Button>
                     ) : (
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         className="text-green-600 border-green-300 hover:bg-green-50 hover:text-green-700 text-xs h-7 px-2.5 rounded-md"
                         onClick={() => handleOpenDay(user.id)}
@@ -326,7 +330,7 @@ export function DayView({
                 {users.map(user => {
                   const appointment = findAppointment(user.id, slot.formattedTime, appointments);
                   const isSlotClosed = isTimeSlotClosed(user.id, slot.formattedTime, closedSlots);
-                  
+
                   const handleClick = () => {
                     openSlotModal(user.id, slot.time, slot.formattedTime)
                   }
@@ -349,7 +353,7 @@ export function DayView({
                               {format(slot.time, "HH:mm")}
                             </span>
                           </div>
-                          
+
                           {/* İçerik Kısmı - Orta */}
                           <div className="flex-1 min-w-0">
                             {isSlotClosed ? (
@@ -449,7 +453,7 @@ export function DayView({
               </DialogDescription>
             )}
           </DialogHeader>
-          
+
           <div className="my-2">
             {selectedSlotInfo.isSlotClosed ? (
               <div className="bg-red-50 p-3 sm:p-4 rounded-md border border-red-200 mb-3">
@@ -457,7 +461,7 @@ export function DayView({
                   <Lock className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-red-600" />
                   <h3 className="text-sm sm:text-base font-medium text-red-700">Bu zaman dilimi kapalı</h3>
                 </div>
-                
+
                 {isAuthenticated() && (
                   <Button
                     className="w-full bg-red-600 hover:bg-red-700 text-white rounded-md h-9 sm:h-11 text-sm"
@@ -475,7 +479,7 @@ export function DayView({
               <div className="space-y-4">
                 <div className="bg-blue-50 p-3 sm:p-4 rounded-md border border-blue-200">
                   <h3 className="text-sm sm:text-base font-medium text-blue-800 mb-2 border-b border-blue-200 pb-1 sm:pb-2">Randevu Bilgileri</h3>
-                  
+
                   <div className="space-y-3">
                     <div className="flex items-start">
                       <User className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 text-blue-700 mt-0.5" />
@@ -486,7 +490,7 @@ export function DayView({
                         </p>
                       </div>
                     </div>
-                    
+
                     {isAuthenticated() && (
                       <div className="flex items-start">
                         <Phone className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 text-blue-700 mt-0.5" />
@@ -498,7 +502,7 @@ export function DayView({
                         </div>
                       </div>
                     )}
-                    
+
                     <div className="flex items-start">
                       <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 text-blue-700 mt-0.5" />
                       <div>
@@ -508,7 +512,7 @@ export function DayView({
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-start">
                       <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 text-blue-700 mt-0.5" />
                       <div>
@@ -518,7 +522,7 @@ export function DayView({
                         </p>
                       </div>
                     </div>
-                    
+
                     {isAuthenticated() && selectedSlotInfo.appointment && selectedSlotInfo.appointment.createdAt && (
                       <div className="pt-1 sm:pt-2 text-[10px] sm:text-xs text-gray-500 border-t border-blue-100">
                         <p>Oluşturulma: {format(new Date(selectedSlotInfo.appointment.createdAt), "dd.MM.yyyy HH:mm")}</p>
@@ -529,7 +533,7 @@ export function DayView({
                     )}
                   </div>
                 </div>
-                
+
                 {isAuthenticated() && (
                   <div className="flex flex-col gap-2">
                     <Button
@@ -566,7 +570,7 @@ export function DayView({
                   <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded-full mr-2"></div>
                   <h3 className="text-sm sm:text-base font-medium text-green-700">Bu zaman dilimi müsait</h3>
                 </div>
-                
+
                 {isAuthenticated() && (
                   <div className="flex flex-col gap-2 pt-1 sm:pt-2">
                     <Button
@@ -595,7 +599,7 @@ export function DayView({
               </div>
             )}
           </div>
-          
+
           <DialogFooter className="mt-2">
             <Button
               variant="outline"

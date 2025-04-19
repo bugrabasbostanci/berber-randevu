@@ -24,6 +24,7 @@ export interface ClosedSlot {
   userId: number
   date: Date
   reason: string
+  time?: string
   createdAt: Date
   updatedAt: Date
   user: AllowedUser
