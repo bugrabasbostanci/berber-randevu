@@ -16,57 +16,69 @@ export async function GET(request: Request) {
       )
     }
 
-    // Tarih ve saati birleştirin veya ayrı saat parametresi kullanın
-    let targetDateTime;
+    // Tarih değerini işle
+    const dateObj = safeParseDate(dateParam);
     
-    if (timeParam && !dateParam.includes("T")) {
-      // Saat bilgisi ayrı geldiyse tarih ve saati birleştir (yyyy-MM-ddTHH:mm formatında)
-      targetDateTime = safeParseDate(`${dateParam}T${timeParam}`);
-    } else {
-      // Tam tarih-saat bilgisi geldiyse direkt kullan
-      targetDateTime = safeParseDate(dateParam);
+    // Yıl, ay, gün bilgilerini al
+    const year = dateObj.getFullYear();
+    const month = dateObj.getMonth() + 1; // JavaScript'te ay 0-11 arası, biz 1-12 kullanıyoruz
+    const day = dateObj.getDate();
+    
+    // Saat ve dakika bilgilerini al
+    let hours = 0, minutes = 0;
+    
+    if (timeParam) {
+      // HH:MM formatında gelen saat
+      [hours, minutes] = timeParam.split(':').map(Number);
+    } else if (dateParam.includes('T')) {
+      // Tarih+saat birlikte geldiyse
+      hours = dateObj.getHours();
+      minutes = dateObj.getMinutes();
     }
     
-    console.log(`Kontrol edilen tarih-saat: ${targetDateTime.toISOString()}`);
     
-    // Sorgu için saat ve dakika bilgilerini al
-    const hours = targetDateTime.getHours();
-    const minutes = targetDateTime.getMinutes();
+    // Günün başlangıç ve bitişini belirle
+    const dayStart = new Date(year, month - 1, day, 0, 0, 0);
+    const dayEnd = new Date(year, month - 1, day, 23, 59, 59);
     
-    // Veritabanındaki ilgili tarih-saatte kapanmış slot kontrolü
-    const closedSlot = await prisma.closedSlot.findFirst({
+    // Formatlanmış saat (HH:MM) - bu saat aranacak
+    const timeToCheck = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    
+    // Aynı gün için tüm kapalı slotları getir
+    const closedSlots = await prisma.closedSlot.findMany({
       where: {
         userId: parseInt(userId),
         date: {
-          // Saat ve dakikanın tam eşleşmesini sağlayarak kontrol et
-          // Yıl-ay-gün eşleşmesini ve saat-dakika eşleşmesini sağla
-          gte: new Date(
-            targetDateTime.getFullYear(),
-            targetDateTime.getMonth(),
-            targetDateTime.getDate(),
-            hours,
-            minutes,
-            0,
-            0
-          ),
-          lte: new Date(
-            targetDateTime.getFullYear(),
-            targetDateTime.getMonth(),
-            targetDateTime.getDate(),
-            hours,
-            minutes,
-            59,
-            999
-          )
+          gte: dayStart,
+          lte: dayEnd
         }
       }
     });
     
-    console.log(`Kapalı slot kontrolü sonucu: ${!!closedSlot ? "Kapalı" : "Açık"}`);
+    // Sonuçları kontrol et
+    let matchFound = false;
+    let matchReason = null;
+    let matchId = null;
+
+    // Her bir slot için saat karşılaştırması
+    for (const slot of closedSlots) {
+      const slotHour = slot.date.getHours();
+      const slotMinute = slot.date.getMinutes();
+      const slotTime = `${slotHour.toString().padStart(2, '0')}:${slotMinute.toString().padStart(2, '0')}`;
+      
+      if (slotTime === timeToCheck) {
+        matchFound = true;
+        matchReason = slot.reason;
+        matchId = slot.id;
+        break;
+      }
+    }
     
     return NextResponse.json({ 
-      isClosed: !!closedSlot,
-      reason: closedSlot?.reason || null
+      isClosed: matchFound,
+      reason: matchReason,
+      slotId: matchId,
+      requestedTime: timeToCheck
     });
   } catch (error) {
     console.error("Kapatılmış saat dilimi kontrolü sırasında hata:", error)

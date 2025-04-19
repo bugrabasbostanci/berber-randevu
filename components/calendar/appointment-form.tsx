@@ -162,13 +162,15 @@ export function AppointmentForm({
           async () => {
             // Kapatılmış saat dilimi kontrolü
             const checkSlotUrl = `/api/appointments/check-closed-slot?date=${formData.date}&time=${formData.time}&userId=${userId}`
-            const isSlotClosed = await fetch(checkSlotUrl)
-              .then(res => res.json())
-              .then(data => data.isClosed)
-              .catch(() => false)
-
-            if (!appointment && isSlotClosed) {
-              throw new Error("Bu saat dilimi kapatılmış. Lütfen başka bir saat seçin.")
+            console.log(`Kapalı slot kontrolü için istek: ${checkSlotUrl}`)
+            
+            const checkResponse = await fetch(checkSlotUrl)
+            const checkData = await checkResponse.json()
+            
+            console.log(`Kapalı slot kontrolü yanıtı:`, checkData)
+            
+            if (!appointment && checkData.isClosed) {
+              throw new Error(`Bu saat dilimi kapatılmış: ${formData.time}. ${checkData.reason ? 'Sebep: ' + checkData.reason : ''}`)
             }
 
             const endpoint = `/api/appointments/${appointment.id}`
@@ -211,13 +213,15 @@ export function AppointmentForm({
           async () => {
             // Kapatılmış saat dilimi kontrolü
             const checkSlotUrl = `/api/appointments/check-closed-slot?date=${formData.date}&time=${formData.time}&userId=${userId}`
-            const isSlotClosed = await fetch(checkSlotUrl)
-              .then(res => res.json())
-              .then(data => data.isClosed)
-              .catch(() => false)
+            console.log(`Kapalı slot kontrolü için istek: ${checkSlotUrl}`)
+            
+            const checkResponse = await fetch(checkSlotUrl)
+            const checkData = await checkResponse.json()
+            
+            console.log(`Kapalı slot kontrolü yanıtı:`, checkData)
 
-            if (isSlotClosed) {
-              throw new Error("Bu saat dilimi kapatılmış. Lütfen başka bir saat seçin.")
+            if (checkData.isClosed) {
+              throw new Error(`Bu saat dilimi kapatılmış: ${formData.time}. ${checkData.reason ? 'Sebep: ' + checkData.reason : ''}`)
             }
 
             const endpoint = "/api/appointments"

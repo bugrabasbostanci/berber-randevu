@@ -1,107 +1,107 @@
-# Berber Randevu Uygulaması: Tarih Yönetimi
+# Berber Randevu Sistemi - Tarih ve Saat Yönetimi Kılavuzu
 
-Bu döküman, Berber Randevu uygulamasındaki tarih-saat işlemleri için standartları ve kullanım şekillerini açıklar.
+Bu döküman, berber randevu sistemimizde tarih ve saat yönetimi için benimsediğimiz yaklaşımı açıklar.
 
-## Tarih İşlemleri İçin Standartlar
+## Temel Prensip: Yerel Saat Kullanımı
 
-Projede tutarlı bir tarih formatı ve işleme yaklaşımı benimsenmesi için aşağıdaki standartlar belirlenmiştir:
+Randevu sistemimiz, **tamamen yerel saat** üzerinden çalışmaktadır. Berber dükkanı tek bir lokasyonda hizmet verdiği ve çalışma saatleri yerel zaman diliminde tanımlandığı için (09:30 - 20:45), sistemin tüm bileşenlerinde yerel saat kullanmak en uygun yaklaşımdır.
 
-### Tarih Formatları
+## Tarih/Saat İşleme Kuralları
 
-`utils.ts` içinde tanımlanan sabit formatlar:
+1. **Tüm Date nesneleri yerel saat olarak ele alınır**
+   - JavaScript Date nesneleri, iç veride UTC kullanır ancak biz görüntüleme ve karşılaştırma işlemlerinde daima yerel saati kullanırız
 
-```typescript
-export const DATE_FORMAT = {
-  ISO_DATE: "yyyy-MM-dd", 
-  ISO_TIME: "HH:mm",
-  ISO_DATETIME: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
-  DISPLAY_DATE: "d MMMM yyyy",
-  DISPLAY_TIME: "HH:mm",
-  DISPLAY_DATETIME: "d MMMM yyyy HH:mm"
-}
-```
+2. **Saat karşılaştırmalarında HH:MM formatı kullanılır**
+   - Örnek: "09:30" === "09:30"
+   - Bu format, zaman dilimi farklarını ortadan kaldırır
 
-### Tarih İşleme Kütüphanesi
+3. **Veritabanında tarihler ISO formatında saklanır**
+   - Fakat bu tarihler daima yerel saat olarak yorumlanır
+   - Kullanıcı arayüzünde daima yerel saat görüntülenir
 
-Proje genelinde `date-fns` kütüphanesi kullanılmaktadır. Ancak doğrudan bu kütüphaneyi kullanmak yerine, `lib/utils.ts` içinde tanımlı yardımcı fonksiyonları kullanın:
+## Kullanılan Yardımcı Fonksiyonlar
+
+Tarih ve saat işlemleri için şu yardımcı fonksiyonlar kullanılır:
 
 - `safeParseDate`: String olarak gelen tarihi güvenli bir şekilde Date'e çevirir
-- `formatDate`: Tarihi belirli bir formatta görüntüler 
-- `startOfDay` ve `endOfDay`: Gün başlangıcı ve sonunu belirler
-- `formatDatesForApi`: Bir nesneyi API için formatlar, tüm Date alanlarını ISO String'e dönüştürür
+- `formatTimeFromDate`: Date nesnesini HH:MM formatına dönüştürür
+- `createLocalDatetime`: Yerel saat olarak Date nesnesi oluşturur
+- `parseISOAsLocalDate`: ISO formatındaki tarihi yerel saat olarak yorumlar
 
-## API Kullanımı
+## Tipik Kullanım Senaryoları
 
-### Client tarafında API istekleri:
+### 1. Kapalı Slot Oluşturma
 
-1. URL'de tarih parametresi geçerken:
-   ```typescript
-   // YYYY-MM-DD formatını kullan
-   const dateStr = toISODateString(selectedDate);
-   // Örnek: /api/appointments/date/2024-04-23
-   ```
+```typescript
+// Gelen veriler
+const date = "2025-04-25"; // YYYY-MM-DD
+const time = "09:30";      // HH:MM
+const userId = 1;
 
-2. Query parametresi olarak tarih gönderirken:
-   ```typescript
-   // ISO String formatını kullan
-   const isoDate = selectedDate.toISOString();
-   // Örnek: /api/appointments/closed-slots?date=2024-04-23T14:30:00.000Z
-   ```
+// Yıl, ay, gün, saat ve dakikayı ayrıştır
+const [year, month, day] = date.split('-').map(Number);
+const [hours, minutes] = time.split(':').map(Number);
 
-3. POST body'de tarih gönderirken:
-   ```typescript
-   // Doğrudan Date nesnesi gönder, API tarafında formatlanacak
-   const appointmentData = {
-     date: selectedDate, // Date nesnesi
-     fullname,
-     // ...
-   };
-   ```
+// Yerel saat olarak tarih oluştur
+const slotDate = createLocalDatetime(year, month, day, hours, minutes);
 
-### Server tarafında API istekleri karşılarken:
+// Veritabanına kaydet
+await prisma.closedSlot.create({
+  data: {
+    userId,
+    date: slotDate,  // Yerel saat
+    reason: "Öğle molası"
+  }
+});
+```
 
-1. Request'ten tarih değerlerini alırken:
-   ```typescript
-   const date = searchParams.get("date");
-   // safeParseDate ile dönüştür
-   const parsedDate = safeParseDate(date);
-   ```
+### 2. Kapalı Slot Kontrolü
 
-2. Gün başlangıcı ve bitişi için:
-   ```typescript
-   const start = startOfDay(date);
-   const end = endOfDay(date);
-   ```
+```typescript
+// Gelen parametreler
+const date = "2025-04-25";  // YYYY-MM-DD
+const time = "09:30";       // HH:MM
+const userId = 1;
 
-3. Aynı günde belirli saatleri karşılaştırırken:
-   ```typescript
-   const time1 = formatDate(date1, DATE_FORMAT.ISO_TIME);
-   const time2 = formatDate(date2, DATE_FORMAT.ISO_TIME);
-   ```
+// Yerel saat olarak tarih oluştur
+const [year, month, day] = date.split('-').map(Number);
+const [hours, minutes] = time.split(':').map(Number);
 
-4. API yanıtında tarih içeren nesneleri döndürürken:
-   ```typescript
-   return NextResponse.json(formatDatesForApi(resultObject));
-   ```
+// İlgili günün tüm kapalı slotlarını getir
+const closedSlots = await prisma.closedSlot.findMany({
+  where: {
+    userId,
+    date: {
+      gte: new Date(year, month-1, day, 0, 0, 0),    // Günün başlangıcı
+      lte: new Date(year, month-1, day, 23, 59, 59)  // Günün sonu
+    }
+  }
+});
 
-## Önemli Notlar
+// HH:MM formatında karşılaştır
+const timeToCheck = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+const isSlotClosed = closedSlots.some(slot => {
+  const slotHour = slot.date.getHours();
+  const slotMinute = slot.date.getMinutes();
+  const slotTime = `${slotHour.toString().padStart(2, '0')}:${slotMinute.toString().padStart(2, '0')}`;
+  return slotTime === timeToCheck;
+});
+```
 
-1. Tarih, gün ve saat işlemlerinde manuel olarak `new Date()` ve `setHours()` gibi yöntemler yerine, util fonksiyonlarını kullanın.
+## Olası Sorunlar ve Çözümleri
 
-2. Zaman dilimi farklılıklarından kaynaklı sorunları önlemek için string olarak tarih alırken mutlaka `safeParseDate` kullanın.
+1. **Yaz Saati Uygulaması Geçişleri**
+   - Yaz saati geçişlerinde sorun yaşanabilir
+   - Çözüm: Tüm tarihleri yerel saat olarak işlemek
 
-3. API yanıtlarında tutarlılık için `formatDatesForApi` fonksiyonu kullanılmalıdır.
+2. **Zaman Dilimi Farklılıkları**
+   - Sunucu ve istemci farklı zaman dilimlerinde olabilir
+   - Çözüm: Zaman dilimi farklılıklarından kaynaklı sorunları önlemek için string olarak tarih alırken mutlaka `safeParseDate` kullanın.
 
-## Sık Karşılaşılan Sorunlar ve Çözümleri
+3. **Veri Transferinde Yaşanan Sorunlar**
+   - API yanıtlarında tarihler ISO formatında gönderilir
+   - Çözüm: API yanıtlarında `formatDatesForApi` kullanıldığından, frontend'de `parseISOAsLocalDate` ile çevirme işlemi yapabilirsiniz.
 
-1. **Sorun**: Frontend'de seçilen bir tarih, backend'de farklı güne ait olarak görünebilir.
-   
-   **Çözüm**: Tarih seçimi yapıldığında önce `toISODateString` ile YYYY-MM-DD formatına, ya da Date nesnesini doğrudan `toISOString()` ile ISO formatına çevirip gönderin.
+## Sonuç
 
-2. **Sorun**: Aynı saat için kontrol yaparken saatler eşleşmiyor.
-   
-   **Çözüm**: Her iki tarihten de saati `formatDate(date, DATE_FORMAT.ISO_TIME)` ile alıp karşılaştırın.
-
-3. **Sorun**: API yanıtında tarihler string olarak alınıyor, tekrar Date'e çevrilemiyor.
-   
-   **Çözüm**: API yanıtlarında `formatDatesForApi` kullanıldığından, frontend'de `safeParseDate` ile çevirme işlemi yapabilirsiniz. 
+Bu yaklaşımla, UTC ve yerel saat arasındaki karışıklıkları önlemiş oluruz. Sistem, berber ve müşterilerin anlayacağı şekilde daima yerel saat üzerinden çalışır. 

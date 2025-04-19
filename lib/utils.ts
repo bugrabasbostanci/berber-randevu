@@ -105,20 +105,11 @@ export function formatTimeFromDate(date: Date | string): string {
   try {
     const dateObj = typeof date === "string" ? new Date(date) : date;
     
-    // UTC ve yerel tarih bilgilerini yazdıralım
-    console.log(`formatTimeFromDate - Input date: ${typeof date === 'string' ? date : date.toISOString()}`);
-    console.log(`formatTimeFromDate - Parsed date: ${dateObj.toISOString()}`);
-    console.log(`formatTimeFromDate - Local: ${dateObj.toString()}`);
-    console.log(`formatTimeFromDate - UTC Hour: ${dateObj.getUTCHours()}, Minute: ${dateObj.getUTCMinutes()}`);
-    
     // Yerel saati kullanarak saat ve dakikayı al
     const hours = dateObj.getHours().toString().padStart(2, '0');
     const minutes = dateObj.getMinutes().toString().padStart(2, '0');
     
-    const result = `${hours}:${minutes}`;
-    console.log(`formatTimeFromDate - Yerel saat: ${result}`);
-    
-    return result;
+    return `${hours}:${minutes}`;
   } catch (error) {
     console.error("Saat formatlanırken hata:", error);
     return "";
@@ -208,4 +199,96 @@ export function formatDatesForApi<T extends Record<string, unknown>>(obj: T): T 
     }
   }
   return result;
+}
+
+/**
+ * İki saat değerini HH:MM formatında normalize edip karşılaştırır
+ * Bu fonksiyon, zaman dilimi farklarından bağımsız olarak saat
+ * ve dakika değerlerini standart formata çevirip karşılaştırır
+ * @param time1 Birinci saat (HH:MM formatında string veya Date)
+ * @param time2 İkinci saat (HH:MM formatında string veya Date)
+ * @returns Eşleşiyorsa true, eşleşmiyorsa false
+ */
+export function compareTimeStrings(time1: string | Date, time2: string | Date): boolean {
+  // String formatındaysa ve ":" içeriyorsa (HH:MM) direkt kullan
+  function normalizeTimeString(time: string | Date): string {
+    if (typeof time === 'string' && time.includes(':')) {
+      // HH:MM formatında gelen saat
+      const [hours, minutes] = time.split(':').map(Number);
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    } else if (time instanceof Date) {
+      // Date nesnesi ise HH:MM formatına dönüştür
+      return formatTimeFromDate(time);
+    } else if (typeof time === 'string') {
+      // ISO string veya başka bir tarih formatı
+      return formatTimeFromDate(safeParseDate(time));
+    }
+    
+    // Hiçbir formata uymuyorsa boş döndür
+    console.error("Geçersiz saat formatı:", time);
+    return "";
+  }
+  
+  const normalizedTime1 = normalizeTimeString(time1);
+  const normalizedTime2 = normalizeTimeString(time2);
+  
+  return normalizedTime1 === normalizedTime2;
+}
+
+/**
+ * Date nesnelerinin yerel saat işlemleri için kullanılan yardımcı fonksiyon.
+ * Bu fonksiyon, tüm uygulamada Date nesnelerinin yerel saat olarak oluşturulması ve 
+ * saklanması için tutarlı bir yöntem sağlar.
+ * 
+ * @param year Yıl (YYYY)
+ * @param month Ay (1-12)
+ * @param day Gün (1-31)
+ * @param hours Saat (0-23)
+ * @param minutes Dakika (0-59)
+ * @param seconds Saniye (0-59), varsayılan 0
+ * @param ms Milisaniye (0-999), varsayılan 0
+ * @returns Date nesnesi (yerel saat olarak)
+ */
+export function createLocalDatetime(
+  year: number, 
+  month: number, 
+  day: number, 
+  hours = 0, 
+  minutes = 0, 
+  seconds = 0, 
+  ms = 0
+): Date {
+  // Not: JS'de ay indeksi 0'dan başlar, bu yüzden month-1 yapıyoruz
+  return new Date(year, month - 1, day, hours, minutes, seconds, ms);
+}
+
+/**
+ * ISO string tarihini yerel saat olarak yorumlar
+ * Tarih+saat verilerini veritabanına kaydederken veya yüklerken kullanılır
+ * 
+ * @param isoString ISO formatında tarih stringi
+ * @returns Yerel saat olarak yorumlanmış Date nesnesi
+ */
+export function parseISOAsLocalDate(isoString: string): Date {
+  // ISO formatını parçalara ayır
+  const dateMatch = isoString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{3}))?Z?$/);
+  
+  if (!dateMatch) {
+    console.error(`Geçersiz ISO formatı: ${isoString}`);
+    return new Date(); // Geçersiz format durumunda şu anki tarihi döndür
+  }
+  
+  // Grupları sayılara çevir
+  const [ yearStr, monthStr, dayStr, hourStr, minuteStr, secondStr, msStr] = dateMatch;
+  
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10); // 1-12 arasında
+  const day = parseInt(dayStr, 10);
+  const hour = parseInt(hourStr, 10);
+  const minute = parseInt(minuteStr, 10);
+  const second = parseInt(secondStr, 10);
+  const ms = msStr ? parseInt(msStr, 10) : 0;
+  
+  // Yerel tarih oluştur
+  return createLocalDatetime(year, month, day, hour, minute, second, ms);
 }
