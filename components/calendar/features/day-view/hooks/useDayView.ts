@@ -196,11 +196,23 @@ export const useDayView = ({ date, onRefresh }: UseDayViewProps) => {
 
   // Gün açma
   const handleOpenDay = async (userId: number) => {
-    const success = await ClosedSlotService.openDay(userId, date);
-    
-    if (success) {
-      await fetchClosedSlots();
-      onRefresh();
+    try {
+      console.log("Gün açma işlemi başlatılıyor:", userId, date.toISOString());
+      const success = await ClosedSlotService.openDay(userId, date);
+      
+      if (success) {
+        console.log("Gün açma başarılı, kapalı slotlar yeniden getiriliyor...");
+        
+        // Veritabanı işlemlerinin tamamlanması için kısa bir bekleme süresi ekleyelim
+        // Bu, race condition'ları önleyecektir
+        setTimeout(async () => {
+          await fetchClosedSlots();
+          onRefresh();
+        }, 500);
+      }
+    } catch (error) {
+      console.error("Gün açma işlemi sırasında hata:", error);
+      toast.error("Gün açma işlemi sırasında bir hata oluştu");
     }
   };
 

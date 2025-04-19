@@ -1,5 +1,12 @@
 import { Appointment, ClosedSlot } from "@/types";
 
+// BookedSlot arayüzü
+interface BookedSlot {
+  time: string;
+  reason?: string;
+  userId: number;
+}
+
 /**
  * Bir tarihin saat formatını döndürür
  */
@@ -48,14 +55,19 @@ export const findAppointment = (
   time: string, 
   appointments: Appointment[]
 ): Appointment | undefined => {
-  // UTC zamanını kullanarak randevu ara
+  // Yerel zaman formatını kullanarak randevu ara
   return appointments.find(app => {
     if (app.userId !== userId) return false;
     
-    // app.date'i getTimeString ile UTC olarak formatla
-    const appTime = typeof app.date === 'string' 
-      ? getTimeString(new Date(app.date)) 
-      : getTimeString(app.date);
+    // Randevu tarihini al
+    const date = typeof app.date === 'string' ? new Date(app.date) : app.date;
+    
+    // UTC saat ve dakikayı al
+    const hours = date.getUTCHours();
+    const minutes = date.getUTCMinutes();
+    
+    // Formatlanmış saati oluştur
+    const appTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     
     const isMatch = appTime === time;
     if (isMatch) {
@@ -80,15 +92,24 @@ export const isTimeSlotClosed = (
   if (userSlots.length > 0) {
     console.log(`User ${userId} has ${userSlots.length} closed slots`);
     
-    // Kapalı slotların saatlerini göster (UTC zamanını kullanarak)
-    const closedTimes = userSlots.map(slot => {
-      const slotTime = getTimeString(slot.date);
-      console.log(`Kapalı slot: ${slotTime}, karşılaştırma: ${time}, eşleşme: ${slotTime === time}`);
-      return slotTime;
-    });
-    
-    // Kontrol edilen zaman bu kullanıcının kapalı slotlarında var mı?
-    return closedTimes.includes(time);
+    // Kapalı slotların saatlerini yerel formatta karşılaştır
+    for (const slot of userSlots) {
+      const date = typeof slot.date === 'string' ? new Date(slot.date) : slot.date;
+      
+      // UTC saat ve dakikayı al
+      const utcHours = date.getUTCHours();
+      const utcMinutes = date.getUTCMinutes();
+      
+      // Formatlanmış saati oluştur
+      const slotTime = `${utcHours.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}`;
+      
+      const isMatch = slotTime === time;
+      console.log(`Kapalı slot UTC: ${slotTime}, karşılaştırma: ${time}, eşleşme: ${isMatch ? 'EVET' : 'HAYIR'}`);
+      
+      if (isMatch) {
+        return true;
+      }
+    }
   }
   
   return false;
@@ -170,4 +191,49 @@ export const isDayClosed = (
   console.log(`isDayClosed - Tüm saatler kapalı mı? ${allClosed ? 'EVET' : 'HAYIR'}`);
   
   return allClosed;
+};
+
+/**
+ * Belirtilen tarih için tüm randevuları alır ve bu randevuların saatlerini döndürür
+ */
+export const getBookedSlots = (
+  date: Date,
+  appointments: Appointment[]
+): BookedSlot[] => {
+  if (!date) {
+    return [];
+  }
+
+  // Randevuları aynı gün içinde filtrele
+  const todayAppointments = appointments.filter((appointment) => {
+    const appointmentDate = new Date(appointment.date);
+    return (
+      appointmentDate.getDate() === date.getDate() &&
+      appointmentDate.getMonth() === date.getMonth() &&
+      appointmentDate.getFullYear() === date.getFullYear()
+    );
+  });
+
+  console.log(`Bugün için ${todayAppointments.length} randevu bulundu`);
+
+  // Randevuları zaman slotlarına dönüştür
+  const bookedSlots = todayAppointments.map((appointment) => {
+    const appointmentDate = new Date(appointment.date);
+    
+    // Yerel saat formatında saat ve dakika bilgilerini al
+    const hours = appointmentDate.getHours().toString().padStart(2, '0');
+    const minutes = appointmentDate.getMinutes().toString().padStart(2, '0');
+    
+    // Saat formatını oluştur (HH:MM)
+    const time = `${hours}:${minutes}`;
+    
+    return {
+      time,
+      userId: appointment.userId,
+    };
+  });
+  
+  console.log('Dolu slotlar:', bookedSlots);
+
+  return bookedSlots;
 }; 

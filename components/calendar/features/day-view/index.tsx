@@ -18,8 +18,6 @@ import {
   findAppointment, 
   isTimeSlotClosed, 
   getClosedSlotReason,
-  isDayClosed as isAllDayClosed,
-  getTimeString
 } from "./utils/slot-helpers";
 
 interface DayViewProps {
@@ -109,7 +107,7 @@ export function DayView({
 
   // Kullanıcı için günün tamamen kapalı olup olmadığını kontrol eder
   const isUserDayClosed = (userId: number): boolean => {
-    // Çalışma saatlerini elde et
+    // Çalışma saatlerini elde et - bunlar artık yerel formatta
     const workingHours = timeSlots.map(slot => slot.formattedTime);
     
     // Kullanıcıya ait kapalı slotlar
@@ -125,37 +123,34 @@ export function DayView({
       return false;
     }
     
-    // Kapalı saatleri bir diziye al (UTC zamanını kullanarak)
-    const closedHours = userClosedSlots.map(slot => {
-      return typeof slot.date === 'string' 
-        ? getTimeString(new Date(slot.date)) 
-        : getTimeString(slot.date);
-    });
-    
-    console.log(`${userId} numaralı kullanıcı için kapalı saatler (UTC): ${closedHours.join(', ')}`);
-    console.log(`Çalışma saatleri (UTC): ${workingHours.join(', ')}`);
-    
-    // Saatleri karşılaştırmak için setler kullanarak hızlı arama yapalım
-    const closedHoursSet = new Set(closedHours);
-    const workingHoursSet = new Set(workingHours);
-    
-    // Kapalı saatlerin sayısı toplam çalışma saatleriyle aynı mı?
-    if (closedHoursSet.size >= workingHoursSet.size) {
-      // Her bir çalışma saatinin kapalı olup olmadığını kontrol et
-      const allTimesAreClosed = Array.from(workingHoursSet).every(hour => closedHoursSet.has(hour));
+    // Eğer kapalı slot sayısı, çalışma saatleri kadar veya daha fazlaysa ve
+    // her bir çalışma saati için en az bir kapalı slot varsa, tüm gün kapalıdır
+    if (userClosedSlotsCount >= workingHours.length) {
+      // Kapalı saatleri yerel formatta al
+      const closedHours = userClosedSlots.map(slot => {
+        const date = typeof slot.date === 'string' ? new Date(slot.date) : slot.date;
+        const hours = date.getUTCHours();
+        const minutes = date.getUTCMinutes();
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      });
       
-      console.log(`${userId} numaralı kullanıcı için tüm saatler kapalı mı: ${allTimesAreClosed ? 'EVET' : 'HAYIR'}`);
+      // Çalışma saatleri ve kapalı saatler için setler oluştur
+      const workingHoursSet = new Set(workingHours);
+      const closedHoursSet = new Set(closedHours);
       
-      if (allTimesAreClosed) {
+      console.log(`Çalışma saatleri: ${Array.from(workingHoursSet).join(', ')}`);
+      console.log(`Kapalı saatler: ${Array.from(closedHoursSet).join(', ')}`);
+      
+      // Her çalışma saati kapalı saatler arasında mı?
+      const allClosed = Array.from(workingHoursSet).every(hour => closedHoursSet.has(hour));
+      
+      if (allClosed) {
+        console.log(`${userId} numaralı kullanıcı için tüm gün kapalı (doğrudan kontrol).`);
         return true;
       }
     }
     
-    // Daha detaylı kontrol için yardımcı fonksiyonu kullan
-    const allClosed = isAllDayClosed(userId, workingHours, closedSlots);
-    console.log(`${userId} numaralı kullanıcı için tüm gün kapalı mı (detaylı kontrol): ${allClosed ? 'EVET' : 'HAYIR'}`);
-    
-    return allClosed;
+    return false;
   }
 
   // Zaman dilimi durumuna göre sınıf belirleme

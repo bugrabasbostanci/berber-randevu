@@ -169,6 +169,22 @@ export const ClosedSlotService = {
    */
   async openDay(userId: number, date: Date) {
     try {
+      // Zaman dilimi sorunlarını önlemek için tarihi normalize et
+      const normalizedDate = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+        12, // Gün ortasındaki bir saat kullanarak saat dilimi sorunlarından kaçın
+        0,
+        0,
+        0
+      );
+      
+      console.log("Gün açma isteği gönderiliyor:", {
+        userId,
+        date: normalizedDate.toISOString()
+      });
+      
       const response = await fetch('/api/appointments/open-day', {
         method: 'POST',
         headers: {
@@ -176,7 +192,7 @@ export const ClosedSlotService = {
         },
         body: JSON.stringify({
           userId,
-          date
+          date: normalizedDate
         })
       });
 
@@ -185,6 +201,7 @@ export const ClosedSlotService = {
       }
 
       const data = await response.json();
+      console.log("Gün açma başarılı, cevap:", data);
       toast.success(data.message);
       return true;
     } catch (error) {

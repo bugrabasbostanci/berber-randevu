@@ -31,6 +31,32 @@ export async function POST(request: Request) {
     
     // Log ekleme
     console.log(`Gün açma isteği - Kullanıcı: ${userId}, Tarih: ${formatDate(dayStart, "yyyy-MM-dd")}`)
+    console.log(`Tarih aralığı - Başlangıç: ${dayStart.toISOString()}, Bitiş: ${dayEnd.toISOString()}`)
+    
+    // Önce kaç tane kapalı slot var kontrol edelim
+    const existingSlots = await prisma.closedSlot.findMany({
+      where: {
+        userId,
+        date: {
+          gte: dayStart,
+          lte: dayEnd
+        }
+      },
+      select: {
+        id: true,
+        date: true
+      }
+    })
+    
+    console.log(`Silinecek kapalı slot sayısı: ${existingSlots.length}`)
+    
+    if (existingSlots.length > 0) {
+      existingSlots.forEach((slot, index) => {
+        console.log(`${index + 1}. Kapalı slot: ${slot.date.toISOString()}`)
+      })
+    } else {
+      console.log("Bu gün için hiç kapalı slot bulunamadı!")
+    }
     
     // Gün içindeki tüm kapalı slotları sil
     const deletedSlots = await prisma.closedSlot.deleteMany({
@@ -42,6 +68,8 @@ export async function POST(request: Request) {
         }
       }
     })
+    
+    console.log(`Silinen kapalı slot sayısı: ${deletedSlots.count}`)
     
     return NextResponse.json({
       message: `Gün başarıyla açıldı (${deletedSlots.count} zaman dilimi açıldı)`,

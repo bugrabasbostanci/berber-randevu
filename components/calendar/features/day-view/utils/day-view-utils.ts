@@ -32,10 +32,21 @@ export const WORKING_HOURS = {
 export const generateTimeSlots = (date: Date) => {
   const slots = []
   
-  // Sabit zaman dilimlerini kullan ve UTC zamanını koru
+  // Çalışma saatlerini yerel saat dilimine göre oluştur
   for (const slot of WORKING_SLOTS) {
-    // UTC tarih oluştur
-    const slotDate = new Date(Date.UTC(
+    // Standart tarih objesi oluştur (yerel zaman)
+    const slotDate = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      slot.hour,
+      slot.minute,
+      0,
+      0
+    );
+    
+    // UTC formatından yerel saate çevirirken 3 saat ekleyelim (Türkiye UTC+3)
+    const utcSlotDate = new Date(Date.UTC(
       date.getFullYear(),
       date.getMonth(),
       date.getDate(),
@@ -45,14 +56,14 @@ export const generateTimeSlots = (date: Date) => {
       0
     ));
     
-    // UTC formatında saat al
-    const utcTime = formatTimeFromDate(slotDate);
+    // Formatlanmış saati al
+    const formattedTime = `${slot.hour.toString().padStart(2, '0')}:${slot.minute.toString().padStart(2, '0')}`;
     
-    console.log(`generateTimeSlots - Slot oluşturuldu: ${slot.hour}:${slot.minute} -> ${slotDate.toISOString()} -> ${utcTime}`);
+    console.log(`generateTimeSlots - Slot: ${formattedTime}, UTC: ${utcSlotDate.toISOString()}, Local: ${slotDate.toString()}`);
     
     slots.push({
-      time: slotDate,
-      formattedTime: utcTime
+      time: utcSlotDate, // UTC zaman kaydedelim (backend için)
+      formattedTime: formattedTime // Yerel zaman gösterelim (UI için)
     });
   }
   
@@ -126,4 +137,45 @@ export const findClosedSlotReason = (
   });
   
   return matchingSlot?.reason;
-} 
+}
+
+/**
+ * 09:30 - 20:45 arası çalışma saatlerini yerel saat dilimine göre oluşturur
+ */
+export const getTimeSlots = (date: Date = new Date()): string[] => {
+  const slots: string[] = [];
+  
+  // Türkiye saati başlangıç ve bitiş saatleri (09:30 - 20:45)
+  const startHour = 9;
+  const startMinute = 30;
+  const endHour = 20;
+  const endMinute = 45;
+  
+  console.log(`getTimeSlots için tarih: ${date.toISOString()}`);
+  
+  // Gün başlangıç saatini belirle (saat ve dakika ayarla, saniye ve milisaniye sıfırla)
+  const localDate = new Date(date);
+  localDate.setHours(startHour, startMinute, 0, 0);
+  
+  console.log(`Başlangıç saati (yerel): ${localDate.toLocaleString()}`);
+  
+  // Bitiş saatine kadar 15'er dakika artırarak slotları oluştur
+  while (
+    localDate.getHours() < endHour || 
+    (localDate.getHours() === endHour && localDate.getMinutes() <= endMinute)
+  ) {
+    // Saat formatını oluştur (HH:MM)
+    const hours = localDate.getHours().toString().padStart(2, '0');
+    const minutes = localDate.getMinutes().toString().padStart(2, '0');
+    const timeSlot = `${hours}:${minutes}`;
+    
+    slots.push(timeSlot);
+    console.log(`Slot eklendi: ${timeSlot}`);
+    
+    // 15 dakika ekle
+    localDate.setMinutes(localDate.getMinutes() + 15);
+  }
+  
+  console.log(`Toplam slot sayısı: ${slots.length}`);
+  return slots;
+}; 
