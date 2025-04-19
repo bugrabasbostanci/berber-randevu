@@ -66,9 +66,20 @@ export const ClosedSlotService = {
    */
   async closeDay(userId: number, date: Date, reason: string) {
     try {
+      // Saat dilimi sorunlarını önlemek için tarihi normalize et
+      const normalizedDate = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+        12, // Gün ortasındaki bir saat kullanarak saat dilimi sorunlarından kaçın
+        0,
+        0,
+        0
+      );
+      
       console.log("Gün kapatma isteği gönderiliyor:", {
         userId,
-        date: date.toISOString(),
+        date: normalizedDate.toISOString(),
         reason
       });
       
@@ -79,7 +90,7 @@ export const ClosedSlotService = {
         },
         body: JSON.stringify({
           userId,
-          date,
+          date: normalizedDate,
           reason: reason || 'Berber/Çalışan tarafından tüm gün kapatıldı'
         })
       });

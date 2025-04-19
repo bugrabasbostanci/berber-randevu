@@ -93,7 +93,21 @@ export function DayView({
 
   // Kullanıcı için günün tamamen kapalı olup olmadığını kontrol eder
   const isUserDayClosed = (userId: number): boolean => {
+    // Çalışma saatlerini elde et
     const workingHours = timeSlots.map(slot => slot.formattedTime);
+    
+    // Kullanıcıya ait kapalı slotların sayısını kontrol et
+    const userClosedSlotsCount = closedSlots.filter(slot => slot.userId === userId).length;
+    
+    console.log(`${userId} numaralı kullanıcı için ${userClosedSlotsCount} adet kapalı slot var.`);
+    console.log(`Toplam çalışma saati: ${workingHours.length}`);
+    
+    // Kapalı slot sayısı, toplam slot sayısına eşitse, tüm gün kapalıdır
+    if (userClosedSlotsCount >= workingHours.length) {
+      return true;
+    }
+    
+    // Daha detaylı kontrol için yardımcı fonksiyonu kullan
     return isAllDayClosed(userId, workingHours, closedSlots);
   }
 

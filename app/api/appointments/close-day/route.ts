@@ -56,12 +56,23 @@ export async function POST(request: Request) {
     const newClosedSlots = []
     
     for (const slot of WORKING_SLOTS) {
-      // Slot için tarih oluştur
-      const slotDate = new Date(dayStart)
-      slotDate.setHours(slot.hour, slot.minute, 0, 0)
+      // Slot için tarih oluştur - önemli: Saat dilimi sorunlarından kaçınmak için
+      // tarih nesnesi oluşturulurken değerleri açıkça belirtiyoruz
+      const slotDate = new Date(
+        dayStart.getFullYear(),
+        dayStart.getMonth(),
+        dayStart.getDate(),
+        slot.hour,
+        slot.minute,
+        0,
+        0
+      )
       
       // Saat formatını al
       const slotTime = formatDate(slotDate, "HH:mm")
+      
+      // Daha fazla debug bilgisi
+      console.log(`Kontrol edilen slot: ${slotTime}, Tarih: ${slotDate.toISOString()}`)
       
       // Eğer bu saat zaten kapalı değilse, kapatılacaklar listesine ekle
       if (!existingClosedHours.has(slotTime)) {

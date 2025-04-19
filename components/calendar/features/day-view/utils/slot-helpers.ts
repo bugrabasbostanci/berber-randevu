@@ -6,7 +6,25 @@ import { Appointment, ClosedSlot } from "@/types";
  */
 export const getTimeString = (date: Date | string): string => {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
+  // Debug bilgisi
+  console.log(`getTimeString - Original date: ${typeof date === 'string' ? date : date.toISOString()}, Converted: ${format(dateObj, "HH:mm")}`);
   return format(dateObj, "HH:mm");
+};
+
+/**
+ * Sadece saat ve dakikaya göre iki tarihi karşılaştırır
+ */
+export const isSameTime = (date1: Date | string, date2: Date | string): boolean => {
+  const time1 = getTimeString(date1);
+  const time2 = getTimeString(date2);
+  const result = time1 === time2;
+  
+  // Debug bilgisi
+  if (result) {
+    console.log(`isSameTime - ${time1} === ${time2}`);
+  }
+  
+  return result;
 };
 
 /**
@@ -17,9 +35,11 @@ export const findAppointment = (
   time: string, 
   appointments: Appointment[]
 ): Appointment | undefined => {
+  // Daha açık bir yaklaşımla eşleştirme yapar
   return appointments.find(app => {
     if (app.userId !== userId) return false;
-    return getTimeString(app.date) === time;
+    const appTime = getTimeString(app.date);
+    return appTime === time;
   });
 };
 
@@ -31,9 +51,23 @@ export const isTimeSlotClosed = (
   time: string, 
   closedSlots: ClosedSlot[]
 ): boolean => {
+  // Daha açık debug bilgisi için
+  const userSlots = closedSlots.filter(s => s.userId === userId);
+  
+  if (userSlots.length > 0) {
+    console.log(`User ${userId} has ${userSlots.length} closed slots`);
+    
+    // Tüm kapalı slotların saatlerini göster
+    userSlots.forEach(slot => {
+      const slotTime = getTimeString(slot.date);
+      console.log(`Kapalı slot: ${slotTime}, karşılaştırma: ${time}, eşleşme: ${slotTime === time}`);
+    });
+  }
+  
   return closedSlots.some(slot => {
     if (slot.userId !== userId) return false;
-    return getTimeString(slot.date) === time;
+    const slotTime = getTimeString(slot.date);
+    return slotTime === time;
   });
 };
 
@@ -66,9 +100,27 @@ export const isDayClosed = (
   // Kullanıcıya ait kapalı slotlar
   const userClosedSlots = closedSlots.filter(slot => slot.userId === userId);
   
-  // Kapalı saatler
-  const closedHours = userClosedSlots.map(slot => getTimeString(slot.date));
+  if (userClosedSlots.length === 0) return false;
   
-  // Tüm çalışma saatleri kapalı mı?
-  return workingHours.every(hour => closedHours.includes(hour));
+  console.log(`isDayClosed - Kullanıcı ${userId} için kontrol ediliyor`);
+  console.log(`isDayClosed - Çalışma saatleri: ${workingHours.join(', ')}`);
+  
+  // Kapalı saatler
+  const closedHours = userClosedSlots.map(slot => {
+    const timeStr = getTimeString(slot.date);
+    return timeStr;
+  });
+  
+  console.log(`isDayClosed - Kapalı saatler: ${closedHours.join(', ')}`);
+  
+  // Daha açık debug bilgisi için her bir çalışma saatini teker teker kontrol et
+  const allClosed = workingHours.every(hour => {
+    const isClosed = closedHours.includes(hour);
+    console.log(`isDayClosed - Saat ${hour} kapalı mı? ${isClosed ? 'EVET' : 'HAYIR'}`);
+    return isClosed;
+  });
+  
+  console.log(`isDayClosed - Tüm saatler kapalı mı? ${allClosed ? 'EVET' : 'HAYIR'}`);
+  
+  return allClosed;
 }; 
